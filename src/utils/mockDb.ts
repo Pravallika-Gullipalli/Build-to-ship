@@ -52,7 +52,7 @@ const defaultComplaints: Complaint[] = [
     category: 'Water & Sewer',
     priority: 'critical',
     status: 'assigned',
-    imageUrl: 'https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&q=80&w=600',
+    imageUrl: '/water_pipe_leak.png',
     location: {
       lat: 37.7699,
       lng: -122.4468,
@@ -93,7 +93,7 @@ const defaultComplaints: Complaint[] = [
     category: 'Roads & Traffic',
     priority: 'high',
     status: 'work_started',
-    imageUrl: 'https://images.unsplash.com/photo-1515162305285-0293e4767cc2?auto=format&fit=crop&q=80&w=600',
+    imageUrl: '/pothole.png',
     location: {
       lat: 37.7838,
       lng: -122.4084,
@@ -134,7 +134,7 @@ const defaultComplaints: Complaint[] = [
     category: 'Public Lighting',
     priority: 'medium',
     status: 'submitted',
-    imageUrl: 'https://images.unsplash.com/photo-1509023464722-18d996393ca8?auto=format&fit=crop&q=80&w=600',
+    imageUrl: '/streetlights.png',
     location: {
       lat: 37.7618,
       lng: -122.4218,

@@ -32,9 +32,9 @@ type ReportFormValues = zod.infer<typeof reportSchema>;
 
 // Mock images for quick select simulation
 const mockImages = [
-  { name: 'Pothole', url: 'https://images.unsplash.com/photo-1515162305285-0293e4767cc2?auto=format&fit=crop&q=80&w=600', description: 'Deep pothole in middle of lane' },
-  { name: 'Water Pipe Leak', url: 'https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&q=80&w=600', description: 'Severe water main burst flooding sidewalk' },
-  { name: 'Broken Streetlamp', url: 'https://images.unsplash.com/photo-1509023464722-18d996393ca8?auto=format&fit=crop&q=80&w=600', description: 'Streetlight out, block pitch black' }
+  { name: 'Pothole', url: '/pothole.png', description: 'Deep pothole in middle of lane' },
+  { name: 'Water Pipe Leak', url: '/water_pipe_leak.png', description: 'Severe water main burst flooding sidewalk' },
+  { name: 'Broken Streetlamp', url: '/streetlights.png', description: 'Streetlight out, block pitch black' }
 ];
 
 export const ReportComplaint: React.FC = () => {
@@ -213,7 +213,7 @@ export const ReportComplaint: React.FC = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <button
                       type="button"
-                      onClick={() => setSelectedImage('https://images.unsplash.com/photo-1515162305285-0293e4767cc2?auto=format&fit=crop&q=80&w=600')}
+                      onClick={() => setSelectedImage('/pothole.png')}
                       className="flex flex-col items-center justify-center gap-2 p-6 rounded-xl border border-dashed border-slate-800 bg-slate-900/20 hover:border-slate-700 transition-colors"
                     >
                       <Camera size={20} className="text-slate-400" />
@@ -221,7 +221,7 @@ export const ReportComplaint: React.FC = () => {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setSelectedImage('https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&q=80&w=600')}
+                      onClick={() => setSelectedImage('/water_pipe_leak.png')}
                       className="flex flex-col items-center justify-center gap-2 p-6 rounded-xl border border-dashed border-slate-800 bg-slate-900/20 hover:border-slate-700 transition-colors"
                     >
                       <Upload size={20} className="text-slate-400" />
