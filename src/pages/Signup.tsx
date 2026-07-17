@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as zod from 'zod';
 import { useAuth } from '../contexts/AuthContext';
@@ -29,7 +29,7 @@ export const Signup: React.FC = () => {
     register,
     handleSubmit,
     setValue,
-    watch,
+    control,
     formState: { errors }
   } = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
@@ -43,7 +43,7 @@ export const Signup: React.FC = () => {
     }
   });
 
-  const selectedRole = watch('role');
+  const selectedRole = useWatch({ control, name: 'role' });
 
   const onSubmit = async (values: SignupFormValues) => {
     setIsSubmitting(true);
@@ -62,8 +62,9 @@ export const Signup: React.FC = () => {
       } else {
         navigate('/officer/dashboard');
       }
-    } catch (err: any) {
-      showToast('error', 'Registration Failed', err?.message || 'Error processing request.');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Error processing request.';
+      showToast('error', 'Registration Failed', errorMessage);
     } finally {
       setIsSubmitting(false);
     }

@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
+import { useNotification } from '../contexts/NotificationContext';
 import { complaintService } from '../services/complaintService';
 import Card from '../components/Card';
 import Badge from '../components/Badge';
@@ -12,31 +13,64 @@ import {
   CheckCircle2, 
   AlertTriangle,
   Play,
-  TrendingUp
+  TrendingUp,
+  UserCheck
 } from 'lucide-react';
 
 export const OfficerDashboard: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { showToast } = useNotification();
+  const [activeTab, setActiveTab] = useState<'my_active' | 'unassigned' | 'my_resolved'>('my_active');
 
-  // Query officer complaints
-  const { data: complaints, isLoading } = useQuery({
-    queryKey: ['officer-complaints', user?.id],
-    queryFn: () => complaintService.filterComplaints({ assignedOfficerId: user?.id }),
-    enabled: !!user?.id
+  // Query all complaints to segment queues
+  const { data: allComplaints, isLoading, refetch } = useQuery({
+    queryKey: ['officer-all-complaints'],
+    queryFn: () => complaintService.getAllComplaints()
   });
 
-  const totalAssigned = complaints?.length || 0;
-  const criticalCount = complaints?.filter(c => c.priority === 'critical' && c.status !== 'resolved').length || 0;
-  const inProgressCount = complaints?.filter(c => c.status === 'work_started').length || 0;
-  const completedCount = complaints?.filter(c => c.status === 'resolved').length || 0;
+  // Self Assign Mutation
+  const selfAssignMutation = useMutation({
+    mutationFn: (complaintId: string) => 
+      complaintService.updateComplaint(complaintId, {
+        status: 'assigned',
+        assignedOfficerId: user?.id,
+        assignedOfficerName: user?.name
+      }),
+    onSuccess: (updated) => {
+      refetch();
+      showToast('success', 'Ticket Assigned', `Successfully assigned: ${updated.title}`);
+    },
+    onError: () => {
+      showToast('error', 'Assignment Failed', 'Could not assign ticket.');
+    }
+  });
 
-  // Filter out resolved from the active list
-  const activeQueue = complaints?.filter(c => c.status !== 'resolved') || [];
-  
+  const handleSelfAssign = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation(); // Avoid navigating to details
+    selfAssignMutation.mutate(id);
+  };
+
+  const myComplaints = allComplaints?.filter(c => c.assignedOfficerId === user?.id) || [];
+  const unassignedQueue = allComplaints?.filter(c => !c.assignedOfficerId && c.status !== 'resolved') || [];
+
+  const activeQueue = myComplaints.filter(c => c.status !== 'resolved');
+  const resolvedQueue = myComplaints.filter(c => c.status === 'resolved');
+
+  const totalAssigned = myComplaints.length;
+  const criticalCount = activeQueue.filter(c => c.priority === 'critical').length;
+  const inProgressCount = activeQueue.filter(c => c.status === 'work_started').length;
+  const completedCount = resolvedQueue.length;
+
+  // Determine current active queue to display
+  const currentQueue = 
+    activeTab === 'my_active' ? activeQueue :
+    activeTab === 'unassigned' ? unassignedQueue :
+    resolvedQueue;
+
   // Sort queue: critical first, then high, then medium, then low
   const priorityWeight = { critical: 4, high: 3, medium: 2, low: 1 };
-  const sortedQueue = [...activeQueue].sort((a, b) => 
+  const sortedQueue = [...currentQueue].sort((a, b) => 
     (priorityWeight[b.priority] || 0) - (priorityWeight[a.priority] || 0)
   );
 
@@ -102,6 +136,31 @@ export const OfficerDashboard: React.FC = () => {
         </Card>
       </div>
 
+      {/* Tabs Selector */}
+      <div className="flex border-b border-slate-850 gap-4">
+        <button
+          onClick={() => setActiveTab('my_active')}
+          className={`pb-2.5 text-xxs font-bold uppercase tracking-wider transition-all relative
+            ${activeTab === 'my_active' ? 'text-blue-500 border-b-2 border-blue-500' : 'text-slate-400 hover:text-slate-200'}`}
+        >
+          My Active Queue ({activeQueue.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('unassigned')}
+          className={`pb-2.5 text-xxs font-bold uppercase tracking-wider transition-all relative
+            ${activeTab === 'unassigned' ? 'text-blue-500 border-b-2 border-blue-500 border-pulse' : 'text-slate-400 hover:text-slate-200'}`}
+        >
+          Available Tickets ({unassignedQueue.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('my_resolved')}
+          className={`pb-2.5 text-xxs font-bold uppercase tracking-wider transition-all relative
+            ${activeTab === 'my_resolved' ? 'text-blue-500 border-b-2 border-blue-500' : 'text-slate-400 hover:text-slate-200'}`}
+        >
+          My Resolved Tickets ({resolvedQueue.length})
+        </button>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Left Column: Assigned Queue list */}
@@ -109,15 +168,15 @@ export const OfficerDashboard: React.FC = () => {
           <div className="flex justify-between items-center px-2">
             <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
               <ShieldAlert size={16} className="text-rose-500 animate-pulse" />
-              Priority Work Queue
+              {activeTab === 'my_active' ? 'My Active Work' : activeTab === 'unassigned' ? 'Unassigned City Tasks' : 'My Completed Records'}
             </h3>
             <span className="text-xxs text-slate-400 font-bold uppercase">
-              {activeQueue.length} Active Tickets
+              {sortedQueue.length} Tickets
             </span>
           </div>
 
           {sortedQueue.length > 0 ? (
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4 animate-fadeIn">
               {sortedQueue.map(c => (
                 <Card
                   key={c.id}
@@ -153,9 +212,20 @@ export const OfficerDashboard: React.FC = () => {
                         <MapPin size={12} className="text-slate-500" />
                         {c.location.address}
                       </span>
-                      <span className="flex items-center gap-1 font-semibold text-blue-400 hover:text-blue-300">
-                        Details &rarr;
-                      </span>
+                      <div className="flex items-center gap-2">
+                        {activeTab === 'unassigned' && (
+                          <button
+                            onClick={(e) => handleSelfAssign(e, c.id)}
+                            className="bg-blue-600 hover:bg-blue-500 text-white font-bold text-[10px] px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1 shadow-glow-blue"
+                          >
+                            <UserCheck size={12} />
+                            Accept Work
+                          </button>
+                        )}
+                        <span className="flex items-center gap-1 font-semibold text-blue-400 hover:text-blue-300">
+                          Details &rarr;
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </Card>
@@ -166,7 +236,11 @@ export const OfficerDashboard: React.FC = () => {
               <CheckCircle2 size={36} className="text-emerald-500 mb-3" />
               <h4 className="font-semibold text-sm text-slate-400">All Clear!</h4>
               <p className="text-xs text-slate-500 max-w-xs mt-1">
-                You have no active complaints assigned to your sector queue. High-priority items will pop up here when submitted.
+                {activeTab === 'my_active' 
+                  ? 'You have no active complaints assigned. Check "Available Tickets" to claim unassigned work!'
+                  : activeTab === 'unassigned'
+                  ? 'No unassigned tickets are currently open in the city database. Great job!'
+                  : 'You have not marked any issues as resolved yet.'}
               </p>
             </Card>
           )}
@@ -180,7 +254,7 @@ export const OfficerDashboard: React.FC = () => {
             </h3>
             <div className="h-64 rounded-xl overflow-hidden">
               <MapComponent
-                complaints={activeQueue}
+                complaints={currentQueue}
                 zoom={12}
                 interactive={true}
               />
@@ -198,7 +272,7 @@ export const OfficerDashboard: React.FC = () => {
               </p>
               <p className="flex gap-2">
                 <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
-                Ensure all pavement sealing works are documented with photographic updates.
+                Ensure all resolution works are documented with photographic updates.
               </p>
             </div>
           </Card>

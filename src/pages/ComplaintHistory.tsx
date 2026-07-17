@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '../contexts/AuthContext';
 import { complaintService } from '../services/complaintService';
 import Card from '../components/Card';
 import Badge from '../components/Badge';
-import type { ComplaintPriority, ComplaintStatus } from '../types/complaint';
+import type { ComplaintPriority, ComplaintStatus, ComplaintFilters } from '../types/complaint';
 import { Search, SlidersHorizontal, MapPin, Clock, AlertCircle } from 'lucide-react';
 
 export const ComplaintHistory: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   // Search & Filter State
   const [search, setSearch] = useState('');
@@ -18,11 +20,32 @@ export const ComplaintHistory: React.FC = () => {
 
   // Query filtered data via TanStack Query
   const { data: complaints, isLoading } = useQuery({
-    queryKey: ['complaints-feed', { search, priority, status, category }],
-    queryFn: () => complaintService.filterComplaints({ search, priority, status, category })
+    queryKey: ['complaints-feed', { search, priority, status, category, userId: user?.id }],
+    queryFn: () => {
+      const filters: ComplaintFilters = { search, priority, status, category };
+      if (user?.role === 'citizen') {
+        filters.reporterId = user.id;
+        filters.reporterName = user.name;
+      }
+      return complaintService.filterComplaints(filters);
+    }
   });
 
-  const categories = ['Roads & Traffic', 'Water & Sewer', 'Sanitation', 'Public Lighting', 'Parks & Recreation', 'Other'];
+  const categories = [
+    'Roads & Streets',
+    'Traffic & Transportation',
+    'Electricity',
+    'Water Supply',
+    'Sanitation & Waste',
+    'Environment',
+    'Public Health & Safety',
+    'Public Infrastructure',
+    'Flooding & Disaster Risks',
+    'Public Safety',
+    'Public Transport',
+    'Public Utilities',
+    'Other Public Issues'
+  ];
 
   return (
     <div className="flex flex-col gap-6">

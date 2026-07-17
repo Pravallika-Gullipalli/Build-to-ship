@@ -18,9 +18,10 @@ import {
   Send, 
   Play, 
   CheckCircle,
-  UserCheck
+  UserCheck,
+  Camera
 } from 'lucide-react';
-import type { ComplaintStatus } from '../types/complaint';
+import type { ComplaintStatus, Complaint } from '../types/complaint';
 
 export const ComplaintDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -29,6 +30,13 @@ export const ComplaintDetails: React.FC = () => {
   const { showToast } = useNotification();
   const queryClient = useQueryClient();
   const [commentInput, setCommentInput] = useState('');
+  
+  // Resolution form states
+  const [resolutionNotes, setResolutionNotes] = useState('');
+  const [resolutionImage, setResolutionImage] = useState<string | null>(null);
+  const [showResolutionForm, setShowResolutionForm] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const resolutionFileInputRef = React.useRef<HTMLInputElement>(null);
 
   // Fetch complaint details
   const { data: complaint, isLoading, error } = useQuery({
@@ -57,7 +65,7 @@ export const ComplaintDetails: React.FC = () => {
   // Mutation for updating complaint status (For Officers/Admins)
   const updateStatusMutation = useMutation({
     mutationFn: (newStatus: ComplaintStatus) => {
-      const updates: any = { status: newStatus };
+      const updates: Partial<Complaint> = { status: newStatus };
       // If assigning to active officer
       if (newStatus === 'assigned' && !complaint?.assignedOfficerId) {
         updates.assignedOfficerId = user?.id;
@@ -81,6 +89,50 @@ export const ComplaintDetails: React.FC = () => {
 
   const handleStatusTransition = (status: ComplaintStatus) => {
     updateStatusMutation.mutate(status);
+  };
+
+  const handleResolveSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resolutionImage) {
+      showToast('warning', 'Resolution Photo Required', 'Please attach a photo of the completed repair.');
+      return;
+    }
+    if (!resolutionNotes.trim()) {
+      showToast('warning', 'Notes Required', 'Please add brief notes describing the repair work.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      // 1. Add comment for resolution details
+      await complaintService.addComment(
+        complaint!.id,
+        user!.id,
+        user!.name,
+        user!.role,
+        `Resolution Update: ${resolutionNotes}`
+      );
+
+      // 2. Update complaint with resolved status and new image URL
+      await complaintService.updateComplaint(complaint!.id, {
+        status: 'resolved',
+        imageUrl: resolutionImage
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['complaint-details', id] });
+      queryClient.invalidateQueries({ queryKey: ['my-complaints'] });
+      queryClient.invalidateQueries({ queryKey: ['complaints-feed'] });
+      queryClient.invalidateQueries({ queryKey: ['officer-all-complaints'] });
+      
+      showToast('success', 'Complaint Resolved', 'Issue marked as resolved and resolution photo attached.');
+      setShowResolutionForm(false);
+      setResolutionNotes('');
+      setResolutionImage(null);
+    } catch {
+      showToast('error', 'Update Failed', 'An error occurred during submission.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (isLoading) {
@@ -148,11 +200,11 @@ export const ComplaintDetails: React.FC = () => {
             )}
             {complaint.status === 'work_started' && (
               <button
-                onClick={() => handleStatusTransition('resolved')}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xxs px-3 py-2 rounded-xl transition-all flex items-center gap-1.5"
+                onClick={() => setShowResolutionForm(prev => !prev)}
+                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xxs px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 shadow-glow-emerald"
               >
                 <CheckCircle size={14} />
-                Mark Resolved
+                {showResolutionForm ? 'Close Resolution Panel' : 'Mark Resolved'}
               </button>
             )}
             <span className="text-xxs text-slate-500 font-semibold px-2 uppercase border border-slate-800/80 rounded bg-slate-900/40">
@@ -166,6 +218,88 @@ export const ComplaintDetails: React.FC = () => {
         
         {/* Left column: Info card, AI, Map, Comments */}
         <div className="lg:col-span-2 flex flex-col gap-6">
+
+          {/* Resolution Submission Card */}
+          {showResolutionForm && (
+            <Card hoverable={false} className="border-emerald-500/50 bg-emerald-950/20 p-6 flex flex-col gap-4 animate-fadeIn">
+              <div className="flex justify-between items-center border-b border-slate-800/80 pb-2">
+                <h3 className="font-extrabold text-sm text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <CheckCircle size={16} />
+                  Submit Repair Resolution
+                </h3>
+                <button
+                  onClick={() => setShowResolutionForm(false)}
+                  className="text-xxs text-slate-500 hover:text-slate-300 font-bold uppercase"
+                >
+                  Cancel
+                </button>
+              </div>
+
+              <form onSubmit={handleResolveSubmit} className="flex flex-col gap-4">
+                <div className="flex flex-col gap-2">
+                  <label className="text-[10px] uppercase font-bold text-slate-400 font-semibold">Attach Resolution Photo (Required)</label>
+                  <input 
+                    type="file" 
+                    ref={resolutionFileInputRef}
+                    className="hidden" 
+                    accept="image/*" 
+                    capture="environment"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          setResolutionImage(reader.result as string);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  />
+                  {resolutionImage ? (
+                    <div className="relative rounded-xl overflow-hidden border border-slate-805 h-40 bg-slate-950">
+                      <img src={resolutionImage} alt="Fixed preview" className="w-full h-full object-contain" />
+                      <button
+                        type="button"
+                        onClick={() => setResolutionImage(null)}
+                        className="absolute top-2 right-2 bg-red-600/80 text-white rounded-lg px-2 py-1 text-xxs font-bold transition-all"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => resolutionFileInputRef.current?.click()}
+                      className="flex flex-col items-center justify-center gap-2 p-5 rounded-xl border border-dashed border-slate-850 bg-slate-900/10 hover:border-emerald-500/40 hover:bg-slate-900/20 transition-all text-slate-300 font-semibold"
+                    >
+                      <Camera size={20} className="text-slate-400 group-hover:text-emerald-400" />
+                      <span className="text-xxs">Snap Photo / Upload Completed Repair Image</span>
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] uppercase font-bold text-slate-400">Resolution details & Work notes</label>
+                  <textarea
+                    value={resolutionNotes}
+                    onChange={(e) => setResolutionNotes(e.target.value)}
+                    placeholder="Type resolution summary (e.g. patched pothole, cleaned sewage grid)..."
+                    rows={3}
+                    className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-xs outline-none focus:border-emerald-500 text-slate-200 transition-colors"
+                    required
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="bg-emerald-600 hover:bg-emerald-500 hover:shadow-glow-emerald disabled:bg-slate-800 text-white font-bold text-xs py-2.5 rounded-xl transition-all"
+                >
+                  {isSubmitting ? 'Submitting Resolution...' : 'Submit Resolution (Mark Resolved)'}
+                </button>
+              </form>
+            </Card>
+          )}
           
           {/* Main Info Card */}
           <Card hoverable={false} className="border-slate-800/60 bg-slate-900/40 p-6 flex flex-col gap-4">

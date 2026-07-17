@@ -52,7 +52,7 @@ const defaultComplaints: Complaint[] = [
     category: 'Water & Sewer',
     priority: 'critical',
     status: 'assigned',
-    imageUrl: '/water_pipe_leak.png',
+    imageUrl: 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&q=80&w=800',
     location: {
       lat: 37.7699,
       lng: -122.4468,
@@ -93,7 +93,7 @@ const defaultComplaints: Complaint[] = [
     category: 'Roads & Traffic',
     priority: 'high',
     status: 'work_started',
-    imageUrl: '/pothole.png',
+    imageUrl: 'https://images.unsplash.com/photo-1515162305285-0293e4767cc2?auto=format&fit=crop&q=80&w=800',
     location: {
       lat: 37.7838,
       lng: -122.4084,
@@ -134,7 +134,7 @@ const defaultComplaints: Complaint[] = [
     category: 'Public Lighting',
     priority: 'medium',
     status: 'submitted',
-    imageUrl: '/streetlights.png',
+    imageUrl: 'https://images.unsplash.com/photo-1509021436665-8f37df706a73?auto=format&fit=crop&q=80&w=800',
     location: {
       lat: 37.7618,
       lng: -122.4218,
@@ -289,7 +289,7 @@ export const getDb = (): DbSchema => {
   }
   try {
     return JSON.parse(raw);
-  } catch (e) {
+  } catch {
     // If corruption, reset
     const db: DbSchema = {
       users: defaultUsers,

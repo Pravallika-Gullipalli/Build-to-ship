@@ -35,7 +35,7 @@ const sidebarLinks: SidebarLink[] = [
   { to: '/citizen/dashboard', label: 'My Complaints', icon: LayoutDashboard, roles: ['citizen'] },
   { to: '/citizen/report', label: 'Report Issue', icon: FilePlus, roles: ['citizen'] },
   { to: '/citizen/history', label: 'History Feed', icon: History, roles: ['citizen'] },
-  { to: '/map-view', label: 'Civic Map', icon: Map, roles: ['citizen', 'officer'] },
+  { to: '/map-view', label: 'Civic Map', icon: Map, roles: ['officer'] },
   
   // Officer links
   { to: '/officer/dashboard', label: 'Officer Queue', icon: LayoutDashboard, roles: ['officer'] },
@@ -46,13 +46,13 @@ const sidebarLinks: SidebarLink[] = [
   { to: '/admin/ai-logs', label: 'AI Logs', icon: Cpu, roles: ['admin'] },
   
   // Shared
-  { to: '/analytics', label: 'City Analytics', icon: BarChart3, roles: ['citizen', 'officer', 'admin'] },
+  { to: '/analytics', label: 'City Analytics', icon: BarChart3, roles: ['officer', 'admin'] },
   { to: '/profile', label: 'My Profile', icon: User, roles: ['citizen', 'officer', 'admin'] },
   { to: '/settings', label: 'Settings', icon: Settings, roles: ['citizen', 'officer', 'admin'] }
 ];
 
 export const DashboardLayout: React.FC = () => {
-  const { user, login, logout, isCitizen, isOfficer } = useAuth();
+  const { user, logout, isCitizen, isOfficer } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { showToast } = useNotification();
   const navigate = useNavigate();
@@ -60,35 +60,20 @@ export const DashboardLayout: React.FC = () => {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
 
-  if (!user) {
-    // If not authenticated, redirect to login
-    React.useEffect(() => {
+  React.useEffect(() => {
+    if (!user) {
       navigate('/login');
-    }, [navigate]);
+    }
+  }, [user, navigate]);
+
+  if (!user) {
     return null;
   }
 
   // Filter links by current role
   const activeLinks = sidebarLinks.filter(link => link.roles.includes(user.role));
 
-  const handleRoleSwitch = async (role: UserRole) => {
-    setIsProfileDropdownOpen(false);
-    let email = 'citizen@civicfix.gov';
-    if (role === 'officer') email = 'officer@civicfix.gov';
-    if (role === 'admin') email = 'admin@civicfix.gov';
 
-    try {
-      await login({ email, role });
-      showToast('success', 'Role Changed', `Switched view to ${role.toUpperCase()} mode.`);
-      
-      // Redirect to appropriate landing dashboard
-      if (role === 'citizen') navigate('/citizen/dashboard');
-      else if (role === 'officer') navigate('/officer/dashboard');
-      else if (role === 'admin') navigate('/admin/dashboard');
-    } catch (err) {
-      showToast('error', 'Role Switch Failed', 'Error switching user context.');
-    }
-  };
 
   const handleLogout = async () => {
     await logout();
@@ -97,11 +82,11 @@ export const DashboardLayout: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex bg-slate-950 text-slate-100 dark:bg-slate-950 dark:text-slate-100 light:bg-slate-50 light:text-slate-900 transition-colors duration-300">
+    <div className="min-h-screen flex bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-300">
       
       {/* Sidebar - Desktop */}
       <aside className="hidden md:flex flex-col w-64 glass-panel border-r border-slate-800/50 m-4 rounded-2xl p-4 shadow-xl z-20">
-        <div className="flex items-center gap-2 px-2 py-4 border-b border-slate-800/40 light:border-slate-200/40">
+        <div className="flex items-center gap-2 px-2 py-4 border-b border-slate-200 dark:border-slate-800/40">
           <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center shadow-glow-blue">
             <Layers size={18} className="text-white" />
           </div>
@@ -123,7 +108,7 @@ export const DashboardLayout: React.FC = () => {
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group
                   ${isActive
                     ? 'bg-blue-600 text-white shadow-glow-blue'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-900/60 dark:hover:bg-slate-900/40 light:text-slate-600 light:hover:text-slate-950 light:hover:bg-slate-200/50'
+                    : 'text-slate-600 hover:text-slate-950 hover:bg-slate-200/50 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-900/40'
                   }`}
               >
                 <Icon size={18} className={isActive ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'} />
@@ -134,7 +119,7 @@ export const DashboardLayout: React.FC = () => {
         </nav>
 
         {/* Footer info & Logout */}
-        <div className="border-t border-slate-800/40 light:border-slate-200/40 pt-4 mt-auto">
+        <div className="border-t border-slate-200 dark:border-slate-800/40 pt-4 mt-auto">
           <button
             onClick={handleLogout}
             className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-medium text-rose-400 hover:bg-rose-500/10 transition-colors"
@@ -156,7 +141,7 @@ export const DashboardLayout: React.FC = () => {
       {/* Sidebar - Mobile */}
       <aside className={`fixed top-0 bottom-0 left-0 w-64 glass-panel border-r border-slate-800/50 p-4 shadow-xl z-50 transition-transform duration-300 md:hidden
         ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="flex items-center justify-between pb-4 border-b border-slate-800/40 light:border-slate-200/40">
+        <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800/40">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
               <Layers size={16} className="text-white" />
@@ -182,7 +167,7 @@ export const DashboardLayout: React.FC = () => {
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
                   ${isActive
                     ? 'bg-blue-600 text-white shadow-glow-blue'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-900/40 light:text-slate-600'
+                    : 'text-slate-600 hover:text-slate-950 hover:bg-slate-200/50 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-900/40'
                   }`}
               >
                 <Icon size={18} />
@@ -216,7 +201,7 @@ export const DashboardLayout: React.FC = () => {
               <Menu size={22} />
             </button>
             <div className="hidden sm:block">
-              <h2 className="text-lg font-bold text-white dark:text-white light:text-slate-900">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">
                 {isCitizen ? 'Citizen Dashboard' : isOfficer ? 'Officer Command Center' : 'System Operations Control'}
               </h2>
               <p className="text-xs text-slate-400">Welcome, {user.name} ({user.role.toUpperCase()})</p>
@@ -227,7 +212,7 @@ export const DashboardLayout: React.FC = () => {
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
-              className="p-2.5 rounded-xl border border-slate-800/60 dark:border-slate-800/60 light:border-slate-200 hover:bg-slate-900/60 light:hover:bg-slate-200/50 text-slate-300 light:text-slate-700 transition-colors"
+              className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800/60 hover:bg-slate-200/50 dark:hover:bg-slate-900/60 text-slate-700 dark:text-slate-300 transition-colors"
             >
               {theme === 'dark' ? <Sun size={18} className="text-amber-400" /> : <Moon size={18} />}
             </button>
@@ -236,14 +221,14 @@ export const DashboardLayout: React.FC = () => {
             <div className="relative">
               <button
                 onClick={() => setIsProfileDropdownOpen(prev => !prev)}
-                className="flex items-center gap-2 p-1.5 pr-3 rounded-xl border border-slate-800/60 dark:border-slate-800/60 light:border-slate-200 hover:bg-slate-900/60 light:hover:bg-slate-200/50 transition-colors"
+                className="flex items-center gap-2 p-1.5 pr-3 rounded-xl border border-slate-200 dark:border-slate-800/60 hover:bg-slate-200/50 dark:hover:bg-slate-900/60 transition-colors"
               >
                 <img
                   src={user.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120'}
                   alt={user.name}
                   className="w-8 h-8 rounded-lg object-cover"
                 />
-                <span className="hidden md:inline text-xs font-semibold text-slate-300 light:text-slate-800 truncate max-w-[80px]">
+                <span className="hidden md:inline text-xs font-semibold text-slate-800 dark:text-slate-300 truncate max-w-[80px]">
                   {user.name.split(' ')[0]}
                 </span>
               </button>
@@ -257,36 +242,7 @@ export const DashboardLayout: React.FC = () => {
                       <p className="text-xxs text-slate-400 truncate">{user.email}</p>
                     </div>
 
-                    {/* Developer Mock Role Selector */}
-                    <div className="p-2 bg-slate-950/60 dark:bg-slate-900/40 rounded-lg mt-2 mb-2">
-                      <p className="text-xxs font-bold uppercase tracking-wider text-blue-400 mb-1">Demo Quick Switcher</p>
-                      <div className="flex flex-col gap-1">
-                        <button
-                          onClick={() => handleRoleSwitch('citizen')}
-                          className={`w-full text-left text-xxs font-medium px-2 py-1.5 rounded transition-all flex justify-between
-                            ${user.role === 'citizen' ? 'bg-blue-600 text-white' : 'hover:bg-slate-800 text-slate-400 hover:text-slate-200'}`}
-                        >
-                          Citizen View
-                          {user.role === 'citizen' && <span className="text-[9px] uppercase font-bold text-white bg-slate-900/60 px-1 rounded">Active</span>}
-                        </button>
-                        <button
-                          onClick={() => handleRoleSwitch('officer')}
-                          className={`w-full text-left text-xxs font-medium px-2 py-1.5 rounded transition-all flex justify-between
-                            ${user.role === 'officer' ? 'bg-blue-600 text-white' : 'hover:bg-slate-800 text-slate-400 hover:text-slate-200'}`}
-                        >
-                          Officer View
-                          {user.role === 'officer' && <span className="text-[9px] uppercase font-bold text-white bg-slate-900/60 px-1 rounded">Active</span>}
-                        </button>
-                        <button
-                          onClick={() => handleRoleSwitch('admin')}
-                          className={`w-full text-left text-xxs font-medium px-2 py-1.5 rounded transition-all flex justify-between
-                            ${user.role === 'admin' ? 'bg-blue-600 text-white' : 'hover:bg-slate-800 text-slate-400 hover:text-slate-200'}`}
-                        >
-                          Admin View
-                          {user.role === 'admin' && <span className="text-[9px] uppercase font-bold text-white bg-slate-900/60 px-1 rounded">Active</span>}
-                        </button>
-                      </div>
-                    </div>
+
 
                     <button
                       onClick={handleLogout}
@@ -313,7 +269,7 @@ export const DashboardLayout: React.FC = () => {
 
 export const MainLayout: React.FC = () => {
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 flex flex-col transition-colors duration-300">
       <Outlet />
     </div>
   );

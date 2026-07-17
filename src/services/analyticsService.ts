@@ -68,11 +68,11 @@ export const analyticsService = {
 
     // Generate dynamic Department Performance
     const departments = [
-      { name: 'Public Works', cat: 'Water & Sewer' },
-      { name: 'Roads & Traffic Division', cat: 'Roads & Traffic' },
-      { name: 'Sanitation Department', cat: 'Sanitation' },
-      { name: 'Lighting & Utilities', cat: 'Public Lighting' },
-      { name: 'Parks & Recreation', cat: 'Parks & Recreation' }
+      { name: 'Public Works', cat: 'Water Supply' },
+      { name: 'Roads & Traffic Division', cat: 'Roads & Streets' },
+      { name: 'Sanitation Department', cat: 'Sanitation & Waste' },
+      { name: 'Lighting & Utilities', cat: 'Electricity' },
+      { name: 'Parks & Recreation', cat: 'Public Infrastructure' }
     ];
 
     const departmentPerformance: DepartmentPerformance[] = departments.map(d => {
@@ -93,10 +93,10 @@ export const analyticsService = {
     });
 
     return {
-      totalComplaints: total + 24, // add baseline
-      resolvedComplaints: resolved + 18,
+      totalComplaints: total,
+      resolvedComplaints: resolved,
       pendingComplaints: pending,
-      duplicateComplaints: duplicates + 6,
+      duplicateComplaints: duplicates,
       avgResolutionTimeDays,
       aiVerificationRate,
       monthlyTrend,

@@ -5,14 +5,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as zod from 'zod';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
-import type { UserRole } from '../types/user';
 import { Layers, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import Card from '../components/Card';
 
 const loginSchema = zod.object({
   email: zod.string().min(1, 'Email is required').email('Invalid email address'),
-  password: zod.string().min(6, 'Password must be at least 6 characters'),
-  role: zod.enum(['citizen', 'officer', 'admin'] as const)
+  password: zod.string().min(6, 'Password must be at least 6 characters')
 });
 
 type LoginFormValues = zod.infer<typeof loginSchema>;
@@ -27,51 +25,35 @@ export const Login: React.FC = () => {
   const {
     register,
     handleSubmit,
-    setValue,
-    watch,
     formState: { errors }
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: 'citizen@civicfix.gov',
-      password: 'password123',
-      role: 'citizen'
+      email: '',
+      password: ''
     }
   });
-
-  const selectedRole = watch('role');
-
-  const handleRoleSelection = (role: UserRole) => {
-    setValue('role', role);
-    // Populate role defaults for quick testing
-    if (role === 'citizen') {
-      setValue('email', 'citizen@civicfix.gov');
-    } else if (role === 'officer') {
-      setValue('email', 'officer@civicfix.gov');
-    } else if (role === 'admin') {
-      setValue('email', 'admin@civicfix.gov');
-    }
-  };
 
   const onSubmit = async (values: LoginFormValues) => {
     setIsSubmitting(true);
     try {
-      await login({
+      const loggedUser = await login({
         email: values.email,
-        role: values.role
+        password: values.password
       });
-      showToast('success', 'Welcome Back', `Successfully signed in as ${values.role.toUpperCase()}`);
+      showToast('success', 'Welcome Back', `Successfully signed in as ${loggedUser.role.toUpperCase()}`);
       
       // Navigate to matching portal
-      if (values.role === 'citizen') {
+      if (loggedUser.role === 'citizen') {
         navigate('/citizen/dashboard');
-      } else if (values.role === 'officer') {
+      } else if (loggedUser.role === 'officer') {
         navigate('/officer/dashboard');
-      } else if (values.role === 'admin') {
+      } else if (loggedUser.role === 'admin') {
         navigate('/admin/dashboard');
       }
-    } catch (err: any) {
-      showToast('error', 'Authentication Failed', err?.message || 'Invalid email or password.');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Invalid email or password.';
+      showToast('error', 'Authentication Failed', errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -92,25 +74,7 @@ export const Login: React.FC = () => {
         <Card hoverable={false} className="border-slate-800/80 bg-slate-900/40 p-8 shadow-2xl backdrop-blur-xl">
           <div className="text-center mb-6">
             <h2 className="text-xl font-bold text-white">Sign In to Dashboard</h2>
-            <p className="text-xs text-slate-400 mt-1">Select a role for demonstration testing</p>
-          </div>
-
-          {/* Role selector chips */}
-          <div className="grid grid-cols-3 gap-2 mb-6">
-            {(['citizen', 'officer', 'admin'] as UserRole[]).map(role => (
-              <button
-                key={role}
-                type="button"
-                onClick={() => handleRoleSelection(role)}
-                className={`py-2 px-1 text-center rounded-lg border text-xxs font-bold uppercase transition-all duration-200
-                  ${selectedRole === role
-                    ? 'bg-blue-600 border-blue-500 text-white shadow-glow-blue'
-                    : 'border-slate-800 bg-slate-900/30 text-slate-400 hover:border-slate-700'
-                  }`}
-              >
-                {role}
-              </button>
-            ))}
+            <p className="text-xs text-slate-400 mt-1">Enter your registered email and password to access the portal</p>
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">

@@ -1,17 +1,43 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getDb } from '../utils/mockDb';
+import { supabase } from '../lib/supabaseClient';
 import Card from '../components/Card';
-import { User, Shield, Briefcase, Mail } from 'lucide-react';
+import { User as UserIcon, Shield, Briefcase, Mail } from 'lucide-react';
 import type { UserRole } from '../types/user';
 
 export const AdminUsers: React.FC = () => {
   const [roleFilter, setRoleFilter] = useState<UserRole | 'all'>('all');
 
-  // Query users from local mock DB
+  // Query users from local mock DB & Supabase live DB
   const { data: users, isLoading } = useQuery({
     queryKey: ['admin-users', roleFilter],
     queryFn: async () => {
+      try {
+        let query = supabase.from('profiles').select('*');
+        if (roleFilter !== 'all') {
+          query = query.eq('role', roleFilter);
+        }
+        const { data, error } = await query;
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          return data.map(row => ({
+            id: row.id,
+            name: row.name,
+            email: row.email,
+            role: row.role as UserRole,
+            phone: row.phone || '',
+            department: row.department,
+            assignedRegion: row.assigned_region,
+            avatarUrl: row.avatar_url,
+            createdAt: row.created_at || new Date().toISOString()
+          }));
+        }
+      } catch (err) {
+        console.warn('Failed to query profiles from Supabase, falling back to local DB:', err);
+      }
+
       const db = getDb();
       if (roleFilter === 'all') return db.users;
       return db.users.filter(u => u.role === roleFilter);
@@ -59,7 +85,7 @@ export const AdminUsers: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-slate-800/40 text-slate-300">
                 {users && users.map(u => {
-                  let Icon = User;
+                  let Icon = UserIcon;
                   let roleColor = 'text-slate-400';
                   if (u.role === 'admin') {
                     Icon = Shield;

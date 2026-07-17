@@ -54,4 +54,38 @@ export interface ComplaintFilters {
   search?: string;
   assignedOfficerId?: string;
   reporterId?: string;
+  reporterName?: string;
+}
+
+export interface ComplaintDbRow {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  priority: ComplaintPriority;
+  status: ComplaintStatus;
+  image_url: string | null;
+  lat: number;
+  lng: number;
+  address: string;
+  reporter_id: string | null;
+  reporter_name: string;
+  assigned_officer_id: string | null;
+  assigned_officer_name: string | null;
+  created_at: string;
+  updated_at: string;
+  reports_count: number;
+  status_timeline: TimelineStep[] | null;
+  ai_notes: string | null;
+  estimated_resolution_date: string | null;
+}
+
+export interface CommentDbRow {
+  id: string;
+  complaint_id: string;
+  user_id: string | null;
+  user_name: string;
+  user_role: string;
+  content: string;
+  created_at: string;
 }

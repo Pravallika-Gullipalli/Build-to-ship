@@ -14,7 +14,8 @@ export interface User {
 
 export interface LoginCredentials {
   email: string;
-  role: UserRole; // To simulate choosing a role for mock demo
+  role?: UserRole; // Optional role for quick switcher fallbacks
+  password?: string;
 }
 
 export interface SignupData {

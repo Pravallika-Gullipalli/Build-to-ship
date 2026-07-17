@@ -1,4 +1,4 @@
-import type { Complaint } from '../types/complaint';
+import type { Complaint, ComplaintDbRow } from '../types/complaint';
 import { supabase } from '../lib/supabaseClient';
 
 const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -13,7 +13,7 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * c;
 };
 
-const mapRowToComplaint = (row: any): Complaint => ({
+const mapRowToComplaint = (row: ComplaintDbRow): Complaint => ({
   id: row.id,
   title: row.title,
   description: row.description,
@@ -26,7 +26,7 @@ const mapRowToComplaint = (row: any): Complaint => ({
     lng: row.lng,
     address: row.address
   },
-  reporterId: row.reporter_id,
+  reporterId: row.reporter_id || '',
   reporterName: row.reporter_name,
   assignedOfficerId: row.assigned_officer_id || undefined,
   assignedOfficerName: row.assigned_officer_name || undefined,
@@ -81,6 +81,25 @@ export const mapService = {
       lng: row.lng,
       intensity: intensityMap[row.priority as keyof typeof intensityMap] || 0.5
     }));
+  },
+
+  async reverseGeocode(lat: number, lng: number): Promise<string> {
+    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+    if (!apiKey) {
+      console.warn('Google Maps API key is missing from environment.');
+      return `Around ${lat.toFixed(4)} N, ${lng.toFixed(4)} W`;
+    }
+    try {
+      const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey}`);
+      const json = await response.json();
+      if (json.status === 'OK' && json.results && json.results.length > 0) {
+        return json.results[0].formatted_address;
+      }
+      return `Around ${lat.toFixed(4)} N, ${lng.toFixed(4)} W`;
+    } catch (e) {
+      console.warn('Google Maps reverse geocoding failed, using coordinates format:', e);
+      return `Around ${lat.toFixed(4)} N, ${lng.toFixed(4)} W`;
+    }
   }
 };
 export default mapService;

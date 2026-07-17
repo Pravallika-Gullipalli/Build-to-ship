@@ -1,4 +1,4 @@
-import type { User, LoginCredentials, SignupData } from '../types/user';
+import type { User, SignupData, UserRole } from '../types/user';
 import { supabase } from '../lib/supabaseClient';
 
 const FALLBACK_SESSION_KEY = 'civicfix_fallback_session';
@@ -23,14 +23,14 @@ export const authService = {
     localStorage.removeItem(FALLBACK_SESSION_KEY);
   },
 
-  async autoRegisterDemoUser(email: string, password = 'password123', role: string): Promise<User> {
+  async autoRegisterDemoUser(email: string, password = 'password123', role: UserRole): Promise<User> {
     // 1. Try to sign up in Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: email,
       password: password,
     });
     
-    let userId = '';
+    let userId: string;
     if (authError) {
       if (authError.message.includes('User already registered')) {
         // If already registered, we can generate a consistent UUID or try signIn
@@ -56,7 +56,7 @@ export const authService = {
     return await this.createProfile(userId, email, role);
   },
 
-  async createProfile(userId: string, email: string, role: string): Promise<User> {
+  async createProfile(userId: string, email: string, role: UserRole): Promise<User> {
     const name = email.split('@')[0];
     const capitalized = name.charAt(0).toUpperCase() + name.slice(1);
     
@@ -77,7 +77,7 @@ export const authService = {
       id: userId,
       name: capitalized,
       email: email,
-      role: role as any,
+      role: role,
       phone: '+1 (555) 000-0000',
       department,
       assignedRegion,
@@ -106,8 +106,11 @@ export const authService = {
     return userData;
   },
 
-  async login(credentials: LoginCredentials & { password?: string }): Promise<User> {
+  async login(credentials: { email: string; password?: string; role?: UserRole }): Promise<User> {
     const password = credentials.password || 'password123';
+    const derivedRole = (credentials.role || 
+      (credentials.email.includes('officer') ? 'officer' : credentials.email.includes('admin') ? 'admin' : 'citizen')) as UserRole;
+    const isMockAccount = ['citizen@civicfix.gov', 'officer@civicfix.gov', 'admin@civicfix.gov'].includes(credentials.email);
     
     try {
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
@@ -116,9 +119,8 @@ export const authService = {
       });
 
       if (authError) {
-        // If unconfirmed or invalid, auto-register/sign-in using fallback
-        if (authError.message.includes('confirm') || authError.message.includes('credentials') || authError.message.includes('not found')) {
-          return await this.autoRegisterDemoUser(credentials.email, password, credentials.role);
+        if (isMockAccount && (authError.message.includes('confirm') || authError.message.includes('credentials') || authError.message.includes('not found'))) {
+          return await this.autoRegisterDemoUser(credentials.email, password, derivedRole);
         }
         throw authError;
       }
@@ -131,7 +133,7 @@ export const authService = {
         .single();
 
       if (profileError || !profile) {
-        return await this.createProfile(authData.user!.id, credentials.email, credentials.role);
+        return await this.createProfile(authData.user!.id, credentials.email, derivedRole);
       }
 
       const userData: User = {
@@ -148,9 +150,11 @@ export const authService = {
 
       this.setFallbackSession(userData);
       return userData;
-    } catch (err: any) {
-      // General safety fallback if any exception occurs (e.g. database offline or missing tables)
-      return await this.autoRegisterDemoUser(credentials.email, password, credentials.role);
+    } catch (err) {
+      if (isMockAccount) {
+        return await this.autoRegisterDemoUser(credentials.email, password, derivedRole);
+      }
+      throw err;
     }
   },
 
@@ -168,7 +172,7 @@ export const authService = {
       }
 
       return await this.createProfile(authData.user!.id, data.email, data.role);
-    } catch (e: any) {
+    } catch {
       // Fallback if Supabase signup is restricted or fails
       const fallbackId = 'user-' + data.email.replace(/[^a-zA-Z0-9]/g, '');
       return await this.createProfile(fallbackId, data.email, data.role);

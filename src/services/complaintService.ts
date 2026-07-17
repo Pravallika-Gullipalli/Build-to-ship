@@ -1,4 +1,4 @@
-import type { Complaint, ComplaintFilters, ComplaintComment, ComplaintStatus, TimelineStep } from '../types/complaint';
+import type { Complaint, ComplaintFilters, ComplaintComment, ComplaintStatus, TimelineStep, ComplaintDbRow, CommentDbRow } from '../types/complaint';
 import { supabase } from '../lib/supabaseClient';
 
 const isValidUuid = (str: string): boolean => {
@@ -6,7 +6,7 @@ const isValidUuid = (str: string): boolean => {
   return uuidRegex.test(str);
 };
 
-const mapComplaint = (dbRow: any, comments: ComplaintComment[] = []): Complaint => ({
+const mapComplaint = (dbRow: ComplaintDbRow, comments: ComplaintComment[] = []): Complaint => ({
   id: dbRow.id,
   title: dbRow.title,
   description: dbRow.description,
@@ -19,7 +19,7 @@ const mapComplaint = (dbRow: any, comments: ComplaintComment[] = []): Complaint 
     lng: dbRow.lng,
     address: dbRow.address
   },
-  reporterId: dbRow.reporter_id,
+  reporterId: dbRow.reporter_id || '',
   reporterName: dbRow.reporter_name,
   assignedOfficerId: dbRow.assigned_officer_id || undefined,
   assignedOfficerName: dbRow.assigned_officer_name || undefined,
@@ -32,10 +32,10 @@ const mapComplaint = (dbRow: any, comments: ComplaintComment[] = []): Complaint 
   estimatedResolutionDate: dbRow.estimated_resolution_date || undefined
 });
 
-const mapComment = (dbRow: any): ComplaintComment => ({
+const mapComment = (dbRow: CommentDbRow): ComplaintComment => ({
   id: dbRow.id,
   complaintId: dbRow.complaint_id,
-  userId: dbRow.user_id,
+  userId: dbRow.user_id || '',
   userName: dbRow.user_name,
   userRole: dbRow.user_role,
   content: dbRow.content,
@@ -116,7 +116,7 @@ export const complaintService = {
     const current = await this.getComplaint(id);
     if (!current) throw new Error('Complaint not found');
 
-    const dbUpdates: any = {};
+    const dbUpdates: Partial<ComplaintDbRow> = {};
     if (updates.title !== undefined) dbUpdates.title = updates.title;
     if (updates.description !== undefined) dbUpdates.description = updates.description;
     if (updates.category !== undefined) dbUpdates.category = updates.category;
@@ -219,7 +219,13 @@ export const complaintService = {
       query = query.eq('assigned_officer_id', filters.assignedOfficerId);
     }
     if (filters.reporterId) {
-      query = query.eq('reporter_id', filters.reporterId);
+      if (isValidUuid(filters.reporterId)) {
+        query = query.eq('reporter_id', filters.reporterId);
+      } else if (filters.reporterName) {
+        query = query.eq('reporter_name', filters.reporterName);
+      } else {
+        query = query.is('reporter_id', null);
+      }
     }
 
     const { data, error } = await query;

@@ -77,7 +77,7 @@ export const MapComponent: React.FC<MapComponentProps> = ({
   };
 
   return (
-    <div className="w-full h-full relative min-h-[350px] rounded-2xl overflow-hidden shadow-lg border border-slate-800/40 dark:border-slate-800/40 light:border-slate-200">
+    <div className="w-full h-full relative min-h-[350px] rounded-2xl overflow-hidden shadow-lg border border-slate-200 dark:border-slate-800/40">
       <MapContainer
         center={center}
         zoom={zoom}

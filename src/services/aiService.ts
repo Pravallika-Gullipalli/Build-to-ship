@@ -7,40 +7,75 @@ export const aiService = {
     const descLower = description.toLowerCase();
     
     // Keyword Analysis
-    let category = 'Other';
+    let category = 'Other Public Issues';
     let confidence = 0.82;
     let priority: ComplaintPriority = 'medium';
     let estimatedResolutionTime = '7 days';
     let duplicateWarning = false;
     let duplicateCount = 0;
 
-    if (descLower.includes('pothole') || descLower.includes('crater') || descLower.includes('road') || descLower.includes('pavement')) {
-      category = 'Roads & Traffic';
+    if (descLower.includes('pothole') || descLower.includes('crater') || descLower.includes('road') || descLower.includes('pavement') || descLower.includes('footpath')) {
+      category = 'Roads & Streets';
       confidence = 0.94;
       priority = 'high';
       estimatedResolutionTime = '3 days';
-    } else if (descLower.includes('water') || descLower.includes('leak') || descLower.includes('sewer') || descLower.includes('pipe') || descLower.includes('flood')) {
-      category = 'Water & Sewer';
+    } else if (descLower.includes('signal') || descLower.includes('parking') || descLower.includes('bus stop') || descLower.includes('crosswalk')) {
+      category = 'Traffic & Transportation';
+      confidence = 0.89;
+      priority = 'medium';
+      estimatedResolutionTime = '5 days';
+    } else if (descLower.includes('street light') || descLower.includes('electric') || descLower.includes('wire') || descLower.includes('transformer')) {
+      category = 'Electricity';
+      confidence = 0.93;
+      priority = 'high';
+      estimatedResolutionTime = '3 days';
+    } else if (descLower.includes('water supply') || descLower.includes('water contamination') || descLower.includes('pipeline') || descLower.includes('leakage')) {
+      category = 'Water Supply';
       confidence = 0.97;
       priority = 'critical';
       estimatedResolutionTime = '24 hours';
       duplicateWarning = true;
       duplicateCount = 2;
-    } else if (descLower.includes('trash') || descLower.includes('dumping') || descLower.includes('garbage') || descLower.includes('litter') || descLower.includes('debris')) {
-      category = 'Sanitation';
+    } else if (descLower.includes('garbage') || descLower.includes('dumping') || descLower.includes('sewage') || descLower.includes('toilet') || descLower.includes('drain')) {
+      category = 'Sanitation & Waste';
       confidence = 0.91;
       priority = 'high';
       estimatedResolutionTime = '2 days';
-    } else if (descLower.includes('light') || descLower.includes('dark') || descLower.includes('lamp') || descLower.includes('bulb') || descLower.includes('electricity')) {
-      category = 'Public Lighting';
-      confidence = 0.89;
-      priority = 'medium';
-      estimatedResolutionTime = '5 days';
-    } else if (descLower.includes('tree') || descLower.includes('bush') || descLower.includes('park') || descLower.includes('vegetation') || descLower.includes('grass')) {
-      category = 'Parks & Recreation';
+    } else if (descLower.includes('tree') || descLower.includes('pollution') || descLower.includes('air') || descLower.includes('noise')) {
+      category = 'Environment';
       confidence = 0.88;
       priority = 'low';
       estimatedResolutionTime = '6 days';
+    } else if (descLower.includes('mosquito') || descLower.includes('stray') || descLower.includes('unsafe space')) {
+      category = 'Public Health & Safety';
+      confidence = 0.87;
+      priority = 'medium';
+      estimatedResolutionTime = '4 days';
+    } else if (descLower.includes('park') || descLower.includes('bench') || descLower.includes('government building') || descLower.includes('playground')) {
+      category = 'Public Infrastructure';
+      confidence = 0.90;
+      priority = 'low';
+      estimatedResolutionTime = '5 days';
+    } else if (descLower.includes('flood') || descLower.includes('storm drain') || descLower.includes('landslide') || descLower.includes('fire')) {
+      category = 'Flooding & Disaster Risks';
+      confidence = 0.96;
+      priority = 'critical';
+      estimatedResolutionTime = '24 hours';
+    } else if (descLower.includes('construction') || descLower.includes('collapse') || descLower.includes('pit') || descLower.includes('safety barrier')) {
+      category = 'Public Safety';
+      confidence = 0.92;
+      priority = 'high';
+      estimatedResolutionTime = '2 days';
+    } else if (descLower.includes('bus shelter') || descLower.includes('railway')) {
+      category = 'Public Transport';
+      confidence = 0.85;
+      priority = 'low';
+      estimatedResolutionTime = '6 days';
+    } else if (descLower.includes('fiber') || descLower.includes('cables') || descLower.includes('wifi') || descLower.includes('utility pole')) {
+      category = 'Public Utilities';
+      confidence = 0.89;
+      priority = 'medium';
+      estimatedResolutionTime = '4 days';
     }
 
     if (imageSrc) {
@@ -67,16 +102,16 @@ export const aiService = {
 
   async predictPriority(description: string, category: string): Promise<ComplaintPriority> {
     const descLower = description.toLowerCase();
-    if (category === 'Water & Sewer' || descLower.includes('flood') || descLower.includes('gushing')) {
+    if (category === 'Water Supply' || category === 'Flooding & Disaster Risks' || descLower.includes('flood') || descLower.includes('gushing')) {
       return 'critical';
     }
-    if (category === 'Roads & Traffic' && (descLower.includes('severe') || descLower.includes('highway'))) {
+    if ((category === 'Roads & Streets' || category === 'Public Safety') && (descLower.includes('severe') || descLower.includes('highway'))) {
       return 'high';
     }
     if (descLower.includes('blocking') || descLower.includes('hazard') || descLower.includes('emergency')) {
       return 'high';
     }
-    if (category === 'Parks & Recreation') {
+    if (category === 'Public Infrastructure' || category === 'Public Transport') {
       return 'low';
     }
     return 'medium';
@@ -109,11 +144,11 @@ export const aiService = {
     if (priority === 'high') return '3 days';
     
     switch (category) {
-      case 'Water & Sewer': return '2 days';
-      case 'Roads & Traffic': return '4 days';
-      case 'Sanitation': return '3 days';
-      case 'Public Lighting': return '5 days';
-      case 'Parks & Recreation': return '7 days';
+      case 'Water Supply': return '2 days';
+      case 'Roads & Streets': return '4 days';
+      case 'Sanitation & Waste': return '3 days';
+      case 'Electricity': return '5 days';
+      case 'Public Infrastructure': return '5 days';
       default: return '6 days';
     }
   },
@@ -133,7 +168,7 @@ export const aiService = {
       timestamp: row.timestamp,
       confidence: row.confidence,
       outcome: row.outcome,
-      status: row.status as any
+      status: row.status as AILog['status']
     }));
   }
 };

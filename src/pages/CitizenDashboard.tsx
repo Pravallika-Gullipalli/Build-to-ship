@@ -14,7 +14,10 @@ export const CitizenDashboard: React.FC = () => {
   // Query citizen complaints via TanStack Query
   const { data: complaints, isLoading } = useQuery({
     queryKey: ['my-complaints', user?.id],
-    queryFn: () => complaintService.filterComplaints({ reporterId: user?.id }),
+    queryFn: () => complaintService.filterComplaints({ 
+      reporterId: user?.id,
+      reporterName: user?.name 
+    }),
     enabled: !!user?.id
   });
 
@@ -177,7 +180,7 @@ export const CitizenDashboard: React.FC = () => {
               </li>
               <li className="flex gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 shrink-0" />
-                Check the History Feed or Civic Map first to avoid logging duplicate issues.
+                Check the History Feed first to avoid logging duplicate issues.
               </li>
             </ul>
           </Card>
