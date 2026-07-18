@@ -67,7 +67,7 @@ export const Signup: React.FC = () => {
     }
   });
 
-  const selectedRole: any = 'citizen';
+  const [selectedRole, setSelectedRole] = useState<'citizen' | 'officer'>('citizen');
 
   // Polling logic to detect email verification confirmation irrespective of device
   React.useEffect(() => {
@@ -120,7 +120,7 @@ export const Signup: React.FC = () => {
         name: finalName,
         email: values.email,
         phone: finalPhone,
-        role: values.role,
+        role: selectedRole,
         password: values.password
       });
       
@@ -130,8 +130,8 @@ export const Signup: React.FC = () => {
         setSignupSuccess(true);
         showToast('info', 'Verification Required', 'A confirmation email has been sent. Please verify your email.');
       } else {
-        showToast('success', 'Account Created', `Successfully registered as a ${values.role}!`);
-        if (values.role === 'citizen') {
+        showToast('success', 'Account Created', `Successfully registered as a ${selectedRole}!`);
+        if (selectedRole === 'citizen') {
           navigate('/citizen/dashboard');
         } else {
           navigate('/officer/dashboard');
@@ -267,7 +267,31 @@ export const Signup: React.FC = () => {
             <p className="text-xs text-slate-400 mt-1">Get started with automated civic reports</p>
           </div>
 
-
+          {/* Role selector switches */}
+          <div className="grid grid-cols-2 gap-2 mb-6">
+            <button
+              type="button"
+              onClick={() => setSelectedRole('citizen')}
+              className={`py-2.5 rounded-lg border text-xxs font-bold uppercase transition-all duration-200
+                ${selectedRole === 'citizen'
+                  ? 'bg-blue-600 border-blue-500 text-white shadow-glow-blue'
+                  : 'border-slate-800 bg-slate-900/30 text-slate-400 hover:border-slate-700'
+                }`}
+            >
+              Citizen Account
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedRole('officer')}
+              className={`py-2.5 rounded-lg border text-xxs font-bold uppercase transition-all duration-200
+                ${selectedRole === 'officer'
+                  ? 'bg-blue-600 border-blue-500 text-white shadow-glow-blue'
+                  : 'border-slate-800 bg-slate-900/30 text-slate-400 hover:border-slate-700'
+                }`}
+            >
+              Officer Account
+            </button>
+          </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">
             {selectedRole === 'officer' && (

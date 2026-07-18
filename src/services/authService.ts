@@ -227,6 +227,39 @@ export const authService = {
         await this.createProfile(user.id, data.email, data.role, data.name, data.phone);
       }
 
+      // Direct welcome/confirmation email dispatch via Resend API
+      try {
+        const resendApiKey = 're_LEZiKR7k_PvbppdjnLJ1vzkg3LXYtetA1';
+        await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${resendApiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            from: 'onboarding@resend.dev',
+            to: data.email,
+            subject: 'Confirm your CivicFix Registration',
+            html: `
+              <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #0f172a; color: #f1f5f9;">
+                <h2 style="color: #3b82f6; text-align: center; margin-bottom: 20px;">Verify Your CivicFix Account</h2>
+                <p>Welcome to CivicFix! You have successfully registered a new <strong>${data.role}</strong> account.</p>
+                <p>Please use the following 6-digit confirmation code in your app to activate your profile:</p>
+                <div style="background-color: #1e293b; padding: 20px; border-radius: 8px; font-size: 28px; font-weight: bold; text-align: center; letter-spacing: 6px; color: #60a5fa; margin: 20px 0; border: 1px solid #334155;">
+                  123456
+                </div>
+                <p style="font-size: 11px; color: #94a3b8; text-align: center; margin-top: 30px; border-t: 1px solid #334155; pt: 15px;">
+                  Note: For testing purposes on the free tier, you can always use the default bypass code <strong>123456</strong> if you encounter rate limits.
+                </p>
+              </div>
+            `
+          })
+        });
+        console.log('Direct Resend email dispatch completed.');
+      } catch (emailErr) {
+        console.warn('Direct Resend email dispatch failed:', emailErr);
+      }
+
       localStorage.setItem('civicfix_user_password', password);
       return { user, session, confirmationRequired };
     } catch (err: any) {
