@@ -4,6 +4,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { complaintService } from '../services/complaintService';
+import { geminiService } from '../services/geminiService';
+import type { AiAnalysisResult } from '../services/geminiService';
 import Card from '../components/Card';
 import Badge from '../components/Badge';
 import Timeline from '../components/Timeline';
@@ -44,6 +46,44 @@ export const ComplaintDetails: React.FC = () => {
     queryFn: () => complaintService.getComplaint(id || ''),
     enabled: !!id
   });
+
+  const [aiAnalysis, setAiAnalysis] = useState<AiAnalysisResult | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  
+  // Query all complaints to check duplicates
+  const { data: allComplaints } = useQuery({
+    queryKey: ['officer-all-complaints'],
+    queryFn: () => complaintService.getAllComplaints(),
+    enabled: !!complaint
+  });
+
+  React.useEffect(() => {
+    if (!complaint) return;
+    
+    let isSubscribed = true;
+
+    const runDetailAnalysis = async () => {
+      setIsAnalyzing(true);
+      try {
+        const result = await geminiService.analyzeComplaint(complaint, allComplaints || []);
+        if (isSubscribed) {
+          setAiAnalysis(result);
+        }
+      } catch (e) {
+        console.error('Failed to run Gemini analysis for details page:', e);
+      } finally {
+        if (isSubscribed) {
+          setIsAnalyzing(false);
+        }
+      }
+    };
+
+    runDetailAnalysis();
+
+    return () => {
+      isSubscribed = false;
+    };
+  }, [complaint, allComplaints]);
 
   // Mutation for adding a comment
   const addCommentMutation = useMutation({
@@ -361,16 +401,37 @@ export const ComplaintDetails: React.FC = () => {
             )}
           </Card>
 
-          {/* AI Notes panel */}
-          {complaint.aiNotes && (
-            <Card hoverable={false} className="border-slate-800/60 bg-slate-900/40 p-5 flex flex-col gap-3">
-              <h4 className="font-bold text-xs uppercase tracking-wider text-white flex items-center gap-1.5 border-b border-slate-800/60 pb-3">
-                <Cpu size={14} className="text-violet-400" />
-                AI Dispatch Log Notes
+          {/* Gemini AI Analysis panel */}
+          {(isAnalyzing || aiAnalysis) && (
+            <Card hoverable={false} className="border-blue-500/30 bg-blue-950/20 p-5 flex flex-col gap-3">
+              <h4 className="font-bold text-xs uppercase tracking-wider text-blue-400 flex items-center gap-1.5 border-b border-blue-500/10 pb-3">
+                <Cpu size={14} className="text-blue-400" />
+                ✨ Gemini AI Insights & Summary
               </h4>
-              <p className="text-xs text-slate-400 leading-relaxed font-medium">
-                {complaint.aiNotes}
-              </p>
+              {isAnalyzing ? (
+                <div className="flex items-center gap-2 text-xxs text-slate-500 italic">
+                  <div className="w-3.5 h-3.5 border-2 border-slate-700 border-t-blue-500 rounded-full animate-spin" />
+                  <span>Gemini is generating summaries and checking for duplicate entries...</span>
+                </div>
+              ) : aiAnalysis ? (
+                <div className="flex flex-col gap-2.5 text-xs leading-relaxed text-slate-300">
+                  <p>
+                    <strong className="text-slate-400">AI Summary:</strong> {aiAnalysis.summary}
+                  </p>
+                  <p>
+                    <strong className="text-slate-400">Recommended Priority:</strong>{' '}
+                    <span className="capitalize font-bold text-blue-400">{aiAnalysis.priority}</span>
+                  </p>
+                  <p>
+                    <strong className="text-slate-400">Justification:</strong> {aiAnalysis.reasoning}
+                  </p>
+                  {aiAnalysis.isDuplicate && aiAnalysis.duplicateWarning && (
+                    <div className="mt-2 bg-rose-500/10 border border-rose-500/20 rounded-lg p-3 text-rose-400 font-bold flex items-center gap-2 animate-pulse">
+                      <span>⚠️ {aiAnalysis.duplicateWarning}</span>
+                    </div>
+                  )}
+                </div>
+              ) : null}
             </Card>
           )}
 

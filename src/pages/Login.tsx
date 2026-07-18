@@ -21,6 +21,8 @@ export const Login: React.FC = () => {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [portalRole, setPortalRole] = useState<'citizen' | 'officer'>('citizen');
+  const [couponCode, setCouponCode] = useState('');
 
   const {
     register,
@@ -35,11 +37,23 @@ export const Login: React.FC = () => {
   });
 
   const onSubmit = async (values: LoginFormValues) => {
+    if (portalRole === 'officer') {
+      if (!couponCode) {
+        showToast('warning', 'Coupon Code Required', 'Please enter your officer coupon code.');
+        return;
+      }
+      if (couponCode.trim().toUpperCase() !== 'OFFICER123' && !couponCode.trim().toUpperCase().startsWith('OFFICER')) {
+        showToast('error', 'Authentication Failed', 'Invalid Officer Coupon Code.');
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     try {
       const loggedUser = await login({
         email: values.email,
-        password: values.password
+        password: values.password,
+        role: portalRole
       });
       showToast('success', 'Welcome Back', `Successfully signed in as ${loggedUser.role.toUpperCase()}`);
       
@@ -53,7 +67,12 @@ export const Login: React.FC = () => {
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Invalid email or password.';
-      showToast('error', 'Authentication Failed', errorMessage);
+      if (errorMessage === 'EMAIL_UNCONFIRMED') {
+        showToast('info', 'Verification Required', 'Your email is unconfirmed. Please verify to access your account.');
+        navigate('/signup', { state: { email: values.email, password: values.password } });
+      } else {
+        showToast('error', 'Authentication Failed', errorMessage);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -74,15 +93,44 @@ export const Login: React.FC = () => {
         <Card hoverable={false} className="border-slate-800/80 bg-slate-900/40 p-8 shadow-2xl backdrop-blur-xl">
           <div className="text-center mb-6">
             <h2 className="text-xl font-bold text-white">Sign In to Dashboard</h2>
-            <p className="text-xs text-slate-400 mt-1">Enter your registered email and password to access the portal</p>
+            <p className="text-xs text-slate-400 mt-1">Enter your registered credentials to access the portal</p>
+          </div>
+
+          {/* Portal Switcher */}
+          <div className="grid grid-cols-2 gap-2 mb-6">
+            <button
+              type="button"
+              onClick={() => setPortalRole('citizen')}
+              className={`py-2 rounded-lg border text-xxs font-bold uppercase transition-all duration-200
+                ${portalRole === 'citizen'
+                  ? 'bg-blue-600 border-blue-500 text-white shadow-glow-blue'
+                  : 'border-slate-800 bg-slate-900/30 text-slate-400 hover:border-slate-700'
+                }`}
+            >
+              Citizen Portal
+            </button>
+            <button
+              type="button"
+              onClick={() => setPortalRole('officer')}
+              className={`py-2 rounded-lg border text-xxs font-bold uppercase transition-all duration-200
+                ${portalRole === 'officer'
+                  ? 'bg-blue-600 border-blue-500 text-white shadow-glow-blue'
+                  : 'border-slate-800 bg-slate-900/30 text-slate-400 hover:border-slate-700'
+                }`}
+            >
+              Officer Portal
+            </button>
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1">
-              <label className="text-[10px] uppercase font-bold text-slate-400">Email Address</label>
+              <label className="text-[10px] uppercase font-bold text-slate-400">
+                {portalRole === 'officer' ? 'Username or Email' : 'Email Address'}
+              </label>
               <input
                 {...register('email')}
-                type="email"
+                type="text"
+                placeholder={portalRole === 'officer' ? 'officer@civicfix.gov' : 'name@example.com'}
                 className="bg-slate-950 border border-slate-800/80 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500 text-slate-200 transition-colors"
               />
               {errors.email && <span className="text-[10px] text-rose-400">{errors.email.message}</span>}
@@ -111,6 +159,19 @@ export const Login: React.FC = () => {
               </div>
               {errors.password && <span className="text-[10px] text-rose-400">{errors.password.message}</span>}
             </div>
+
+            {portalRole === 'officer' && (
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] uppercase font-bold text-slate-400">Officer Coupon Code</label>
+                <input
+                  type="text"
+                  placeholder="e.g. OFFICER123"
+                  value={couponCode}
+                  onChange={(e) => setCouponCode(e.target.value)}
+                  className="bg-slate-950 border border-slate-800/80 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500 text-slate-200 transition-colors"
+                />
+              </div>
+            )}
 
             <button
               type="submit"

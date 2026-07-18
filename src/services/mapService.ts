@@ -85,21 +85,35 @@ export const mapService = {
 
   async reverseGeocode(lat: number, lng: number): Promise<string> {
     const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-    if (!apiKey) {
-      console.warn('Google Maps API key is missing from environment.');
-      return `Around ${lat.toFixed(4)} N, ${lng.toFixed(4)} W`;
-    }
-    try {
-      const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey}`);
-      const json = await response.json();
-      if (json.status === 'OK' && json.results && json.results.length > 0) {
-        return json.results[0].formatted_address;
+    if (apiKey) {
+      try {
+        const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey}`);
+        const json = await response.json();
+        if (json.status === 'OK' && json.results && json.results.length > 0) {
+          return json.results[0].formatted_address;
+        }
+      } catch (e) {
+        console.warn('Google Maps reverse geocoding failed, trying Nominatim:', e);
       }
-      return `Around ${lat.toFixed(4)} N, ${lng.toFixed(4)} W`;
-    } catch (e) {
-      console.warn('Google Maps reverse geocoding failed, using coordinates format:', e);
-      return `Around ${lat.toFixed(4)} N, ${lng.toFixed(4)} W`;
     }
+    
+    // Keyless fallback using OpenStreetMap Nominatim API
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`, {
+        headers: {
+          'Accept-Language': 'en',
+          'User-Agent': 'CivicFixApp/1.0'
+        }
+      });
+      const json = await response.json();
+      if (json && json.display_name) {
+        return json.display_name;
+      }
+    } catch (e) {
+      console.warn('Nominatim reverse geocoding failed, using coordinates format:', e);
+    }
+
+    return `Around ${lat.toFixed(4)} N, ${lng.toFixed(4)} W`;
   }
 };
 export default mapService;

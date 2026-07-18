@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "leaflet/dist/leaflet.css";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-border: rgba(255, 255, 255, 0.1);
   --color-background: rgba(15, 23, 42, 0.95);
@@ -147,4 +149,136 @@
 
 .pulse-glow-blue {
   animation: pulse-glow 2.5s infinite;
+}
+
+/* Light mode premium styling overrides */
+.light body {
+  background-color: #f8fafc; /* bg-slate-50 */
+  color: #0f172a; /* text-slate-900 */
+}
+
+/* Light mode panel & card overrides */
+.light .glass-panel,
+.light .glass-card {
+  color: #1e293b !important; /* text-slate-800 */
+}
+
+/* Light mode typography colors */
+.light .glass-panel h1,
+.light .glass-panel h2,
+.light .glass-panel h3,
+.light .glass-panel h4,
+.light .glass-panel h5,
+.light .glass-panel h6,
+.light .glass-card h1,
+.light .glass-card h2,
+.light .glass-card h3,
+.light .glass-card h4,
+.light .glass-card h5,
+.light .glass-card h6 {
+  color: #0f172a !important; /* text-slate-900 */
+}
+
+/* Override dark-theme hardcoded white classes */
+.light .text-white,
+.light h1.text-white,
+.light h2.text-white,
+.light h3.text-white,
+.light h4.text-white,
+.light span.text-white {
+  color: #0f172a !important; /* text-slate-900 */
+}
+
+.light .text-slate-100 {
+  color: #0f172a !important;
+}
+
+.light .text-slate-200 {
+  color: #1e293b !important;
+}
+
+.light .text-slate-300 {
+  color: #334155 !important;
+}
+
+.light .text-slate-400 {
+  color: #475569 !important; /* text-slate-600 */
+}
+
+.light .text-slate-500 {
+  color: #64748b !important; /* text-slate-500 */
+}
+
+/* Inactive sidebar link icons and labels contrast */
+.light aside .text-slate-400,
+.light aside .group:hover .text-slate-400 {
+  color: #475569 !important;
+}
+
+.light aside .text-slate-600 {
+  color: #475569 !important;
+}
+
+.light aside .group:hover {
+  background-color: rgba(15, 23, 42, 0.08) !important;
+}
+
+/* Form inputs styling in light mode */
+.light input,
+.light select,
+.light textarea {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important; /* border-slate-300 */
+  color: #0f172a !important;
+}
+
+.light input:focus,
+.light select:focus,
+.light textarea:focus {
+  border-color: #2563eb !important; /* civic-blue */
+}
+
+/* Empty states and secondary block layouts */
+.light .bg-slate-950,
+.light .bg-slate-950\/60,
+.light .bg-slate-950\/40,
+.light .bg-slate-950\/80 {
+  background-color: #f1f5f9 !important; /* bg-slate-100 */
+  border-color: #cbd5e1 !important;
+}
+
+.light .bg-slate-900\/40,
+.light .bg-slate-900\/20,
+.light .bg-slate-900\/10 {
+  background-color: #ffffff !important; /* white background for inner components */
+}
+
+.light .border-slate-800,
+.light .border-slate-800\/60,
+.light .border-slate-800\/80,
+.light .border-slate-800\/40,
+.light .border-slate-855,
+.light .border-slate-805 {
+  border-color: #e2e8f0 !important; /* border-slate-200 */
+}
+
+/* Secondary Button styling */
+.light .glass-card .bg-slate-800 {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+.light .glass-card .bg-slate-800:hover {
+  background-color: #e2e8f0 !important;
+}
+
+/* Badges inside light mode tables */
+.light tr:hover {
+  background-color: rgba(37, 99, 235, 0.04) !important;
+}
+
+/* Scrollbar styling in light mode */
+.light ::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1 !important;
 }

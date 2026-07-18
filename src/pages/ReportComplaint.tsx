@@ -124,7 +124,12 @@ export const ReportComplaint: React.FC = () => {
   // Form submission state
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Live Camera states
+  const [showCamera, setShowCamera] = useState(false);
+
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const videoRef = React.useRef<HTMLVideoElement>(null);
+  const streamRef = React.useRef<MediaStream | null>(null);
 
   const {
     register,
@@ -143,13 +148,72 @@ export const ReportComplaint: React.FC = () => {
     try {
       const location = await getCoordinates();
       setCoords({ lat: location.lat, lng: location.lng });
-      // Use Google Geocoding API key
       const streetAddress = await mapService.reverseGeocode(location.lat, location.lng);
       setAddress(streetAddress);
       showToast('success', 'GPS Synced', 'Location coordinates successfully attached.');
     } catch {
       showToast('error', 'Location Error', 'Unable to fetch precise location.');
     }
+  };
+
+  // Auto-request location on mount & clean up stream
+  React.useEffect(() => {
+    handleGpsRequest();
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const startCamera = async () => {
+    try {
+      setShowCamera(true);
+      // Wait for React to render the <video> element
+      setTimeout(async () => {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } }
+          });
+          streamRef.current = stream;
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+          }
+        } catch (err) {
+          console.error('Camera permission denied or error:', err);
+          showToast('error', 'Camera Error', 'Could not access device camera. Please grant permissions.');
+          setShowCamera(false);
+        }
+      }, 100);
+    } catch {
+      showToast('error', 'Camera Error', 'Camera is not supported on this device.');
+    }
+  };
+
+  const capturePhoto = () => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg');
+      setSelectedImage(dataUrl);
+      showToast('success', 'Photo Captured', 'Image successfully snapped and attached.');
+    }
+    stopCamera();
+  };
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    setShowCamera(false);
   };
 
   const handleCategorySelect = (categoryName: string) => {
@@ -341,7 +405,6 @@ export const ReportComplaint: React.FC = () => {
                   ref={fileInputRef}
                   className="hidden" 
                   accept="image/*" 
-                  capture="environment"
                   onChange={handleFileChange}
                 />
                 {selectedImage ? (
@@ -355,19 +418,56 @@ export const ReportComplaint: React.FC = () => {
                       <Trash2 size={16} />
                     </button>
                   </div>
+                ) : showCamera ? (
+                  <div className="relative rounded-xl overflow-hidden border border-slate-800 bg-black flex flex-col items-center">
+                    <video 
+                      ref={videoRef} 
+                      autoPlay 
+                      playsInline 
+                      className="w-full h-64 object-cover"
+                    />
+                    <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-4 z-10">
+                      <button
+                        type="button"
+                        onClick={capturePhoto}
+                        className="bg-blue-600 hover:bg-blue-500 hover:shadow-glow-blue text-white font-bold text-xxs uppercase px-4 py-2 rounded-xl transition-all"
+                      >
+                        Capture Photo
+                      </button>
+                      <button
+                        type="button"
+                        onClick={stopCamera}
+                        className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xxs uppercase px-4 py-2 rounded-xl transition-all"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className={`flex flex-col items-center justify-center gap-2 p-6 rounded-xl border border-dashed bg-slate-900/20 hover:bg-slate-900/35 transition-all duration-300 group
-                      ${selectedCategory === 'Other Public Issues' || selectedProblem === 'Other Public Problem'
-                        ? 'border-blue-500 shadow-glow-blue animate-pulse'
-                        : 'border-slate-800 hover:border-slate-700'}`}
-                  >
-                    <Camera size={22} className="text-slate-400 group-hover:text-blue-400 transition-colors" />
-                    <span className="text-xxs font-semibold text-slate-300">Open Device Camera / Select File</span>
-                    <span className="text-[9px] text-slate-500">Attach visual proof to submit to the office</span>
-                  </button>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={startCamera}
+                      className="flex flex-col items-center justify-center gap-3 p-6 rounded-xl border border-dashed border-slate-800/80 bg-slate-900/20 hover:bg-slate-900/35 transition-all duration-300 group"
+                    >
+                      <Camera size={22} className="text-slate-400 group-hover:text-blue-400 transition-colors" />
+                      <div className="text-center">
+                        <span className="text-xxs font-bold text-slate-300 uppercase tracking-wider block">Open Live Camera</span>
+                        <span className="text-[9px] text-slate-500 mt-1 block">Snap a photo in real time</span>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex flex-col items-center justify-center gap-3 p-6 rounded-xl border border-dashed border-slate-800/80 bg-slate-900/20 hover:bg-slate-900/35 transition-all duration-300 group"
+                    >
+                      <FileText size={22} className="text-slate-400 group-hover:text-blue-400 transition-colors" />
+                      <div className="text-center">
+                        <span className="text-xxs font-bold text-slate-300 uppercase tracking-wider block">Upload Image File</span>
+                        <span className="text-[9px] text-slate-500 mt-1 block">Select from device library</span>
+                      </div>
+                    </button>
+                  </div>
                 )}
               </div>
 
