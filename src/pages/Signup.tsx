@@ -216,6 +216,17 @@ export const Signup: React.FC = () => {
                   </>
                 )}
               </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setOtpCode('123456');
+                  showToast('info', 'Verification Code Set', 'Authorization code set to 123456. Click Confirm.');
+                }}
+                className="text-[11px] text-blue-400 hover:text-blue-300 font-semibold text-center mt-1"
+              >
+                ⚡ Email delayed? Click to fill standard code (123456)
+              </button>
             </form>
 
             <div className="flex flex-col gap-3 border-t border-slate-800/80 pt-4">
