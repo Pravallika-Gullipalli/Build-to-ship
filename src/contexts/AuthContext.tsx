@@ -28,14 +28,22 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [user, setUser] = useState<User | null>(() => {
+    try {
+      return authService.getFallbackSession();
+    } catch {
+      return null;
+    }
+  });
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   useEffect(() => {
     const initAuth = async () => {
       try {
         const currentUser = await authService.getUser();
-        setUser(currentUser);
+        if (currentUser) {
+          setUser(currentUser);
+        }
       } catch (err) {
         console.error('Failed to restore auth session:', err);
       } finally {

@@ -53,7 +53,7 @@ const sidebarLinks: SidebarLink[] = [
 ];
 
 export const DashboardLayout: React.FC = () => {
-  const { user, logout, isCitizen, isOfficer } = useAuth();
+  const { user, isLoading, logout, isCitizen, isOfficer } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { showToast } = useNotification();
   const navigate = useNavigate();
@@ -62,10 +62,21 @@ export const DashboardLayout: React.FC = () => {
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
 
   React.useEffect(() => {
-    if (!user) {
+    if (!isLoading && !user) {
       navigate('/login');
     }
-  }, [user, navigate]);
+  }, [isLoading, user, navigate]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-3 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+          <p className="text-xs text-slate-400 font-medium">Restoring session...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!user) {
     return null;
