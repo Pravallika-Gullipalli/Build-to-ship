@@ -4,6 +4,14 @@ const SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || '';
 const TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || '';
 const PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || '';
 
+if (PUBLIC_KEY) {
+  try {
+    emailjs.init({ publicKey: PUBLIC_KEY });
+  } catch (e) {
+    console.warn('[EmailJS] init error:', e);
+  }
+}
+
 export const emailJsService = {
   isConfigured(): boolean {
     return Boolean(SERVICE_ID && TEMPLATE_ID && PUBLIC_KEY);
@@ -33,12 +41,13 @@ export const emailJsService = {
       code: code,
       token: code,
       verification_code: code,
-      message: `Your verification code is: ${code}`,
+      message: `Your 6-digit verification code is: ${code}`,
       app_name: 'AI CivicFix',
       time: new Date().toLocaleTimeString()
     };
 
     try {
+      emailjs.init({ publicKey: PUBLIC_KEY });
       const response = await emailjs.send(
         SERVICE_ID,
         TEMPLATE_ID,
@@ -50,7 +59,8 @@ export const emailJsService = {
       return { success: true, message: 'Verification email sent successfully.' };
     } catch (error: any) {
       console.error('[EmailJS] Failed to send email:', error);
-      return { success: false, message: error?.text || error?.message || 'Failed to dispatch email via EmailJS.' };
+      const errDetail = error?.text || error?.message || JSON.stringify(error);
+      return { success: false, message: `EmailJS error: ${errDetail}` };
     }
   }
 };

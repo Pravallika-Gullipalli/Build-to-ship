@@ -93,12 +93,18 @@ export const otpService = {
     if (type === 'email') {
       if (emailJsService.isConfigured()) {
         try {
-          await emailJsService.sendVerificationCode(cleanDest, code);
+          const sendRes = await emailJsService.sendVerificationCode(cleanDest, code);
+          if (!sendRes.success) {
+            console.error('[EmailJS Failure]:', sendRes.message);
+          } else {
+            console.log(`[CivicFix EmailJS] Dispatched confirmation code to ${cleanDest}`);
+          }
         } catch (emailErr) {
           console.warn('[EmailJS Dispatch Error]:', emailErr);
         }
+      } else {
+        console.warn('[EmailJS] Configuration missing in .env');
       }
-      console.log(`[CivicFix EmailJS Dispatch] Dispatched confirmation code ${code} to ${cleanDest}`);
     }
 
     return {
