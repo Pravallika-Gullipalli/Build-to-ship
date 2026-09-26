@@ -2,10 +2,10 @@ import { databases, ID, Query } from '../lib/appwrite';
 import type { Complaint, ComplaintComment } from '../types/complaint';
 import type { User } from '../types/user';
 
-const DATABASE_ID = import.meta.env.VITE_APPWRITE_DATABASE_ID || '';
-const COMPLAINTS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_COMPLAINTS_COLLECTION_ID || '';
-const PROFILES_COLLECTION_ID = import.meta.env.VITE_APPWRITE_PROFILES_COLLECTION_ID || '';
-const COMMENTS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_COMMENTS_COLLECTION_ID || '';
+const DATABASE_ID = import.meta.env.VITE_APPWRITE_DATABASE_ID || '6ab714de000b6e7deeae';
+const COMPLAINTS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_COMPLAINTS_COLLECTION_ID || 'complaints';
+const PROFILES_COLLECTION_ID = import.meta.env.VITE_APPWRITE_PROFILES_COLLECTION_ID || 'profiles';
+const COMMENTS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_COMMENTS_COLLECTION_ID || 'comments';
 
 export const appwriteDatabase = {
   isConfigured(): boolean {
