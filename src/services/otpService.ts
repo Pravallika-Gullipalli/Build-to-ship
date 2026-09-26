@@ -75,14 +75,13 @@ export const otpService = {
 
     console.log(`[CivicFix OTP Service] Generated OTP for ${cleanDest} (${purpose}): ${code}`);
 
-    // Broadcast in-app event so toast/notification or modal can display it
+    // Broadcast in-app event so notification toast can notify that email was dispatched
     try {
       window.dispatchEvent(new CustomEvent('civicfix_otp_dispatched', {
         detail: {
           destination: cleanDest,
           type,
           purpose,
-          code,
           expiresAt: otpData.expiresAt
         }
       }));

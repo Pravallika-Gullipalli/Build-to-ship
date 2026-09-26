@@ -45,12 +45,12 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   React.useEffect(() => {
     const handleOtpEvent = (e: any) => {
       const detail = e.detail;
-      if (detail && detail.code) {
+      if (detail && detail.destination) {
         showToast(
           'info',
-          `🔐 OTP Verification Code`,
-          `Code for ${detail.destination}: ${detail.code} (Expires in 10 mins)`,
-          9000
+          `📧 Verification Code Sent`,
+          `We sent a 6-digit confirmation code to ${detail.destination}. Please check your inbox and spam folder.`,
+          7000
         );
       }
     };

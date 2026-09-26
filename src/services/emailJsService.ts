@@ -21,14 +21,19 @@ export const emailJsService = {
     const templateParams = {
       to_email: cleanEmail,
       email: cleanEmail,
+      reply_to: cleanEmail,
       recipient_email: cleanEmail,
+      user_email: cleanEmail,
       to_name: finalName,
       user_name: finalName,
       name: finalName,
       passcode: code,
       otp_code: code,
+      otp: code,
       code: code,
-      message: `Your 6-digit verification code is: ${code}`,
+      token: code,
+      verification_code: code,
+      message: `Your verification code is: ${code}`,
       app_name: 'AI CivicFix',
       time: new Date().toLocaleTimeString()
     };
@@ -41,7 +46,7 @@ export const emailJsService = {
         PUBLIC_KEY
       );
 
-      console.log(`[EmailJS] Successfully dispatched confirmation code to ${cleanEmail}:`, response.status, response.text);
+      console.log(`[EmailJS] Successfully dispatched OTP email to ${cleanEmail}:`, response.status, response.text);
       return { success: true, message: 'Verification email sent successfully.' };
     } catch (error: any) {
       console.error('[EmailJS] Failed to send email:', error);
