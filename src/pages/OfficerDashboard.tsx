@@ -15,7 +15,13 @@ import {
   AlertTriangle,
   Play,
   TrendingUp,
-  UserCheck
+  UserCheck,
+  Shield,
+  Mail,
+  Key,
+  Phone,
+  Award,
+  User
 } from 'lucide-react';
 
 export const OfficerDashboard: React.FC = () => {
@@ -162,6 +168,91 @@ export const OfficerDashboard: React.FC = () => {
   return (
     <div className="flex flex-col gap-6">
       
+      {/* Officer Profile & Official Credentials Header Card */}
+      <Card hoverable={false} className="border-blue-500/30 bg-gradient-to-r from-blue-950/40 via-slate-900/60 to-slate-900/40 p-6 shadow-2xl relative overflow-hidden backdrop-blur-xl">
+        <div className="absolute top-0 right-0 w-80 h-full bg-blue-500/5 blur-3xl pointer-events-none" />
+        
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 relative z-10">
+          
+          {/* Officer Bio & Avatar */}
+          <div className="flex items-center gap-4">
+            <div className="relative shrink-0">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-glow-blue border border-blue-400/40 overflow-hidden">
+                {user?.avatarUrl ? (
+                  <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
+                ) : (
+                  <Shield size={30} className="text-white" />
+                )}
+              </div>
+              <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-slate-950 rounded-full" title="Active Duty" />
+            </div>
+
+            <div className="flex flex-col">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h2 className="text-xl font-black text-white tracking-tight">
+                  {user?.name || 'Officer Robert Chen'}
+                </h2>
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 uppercase tracking-wider">
+                  <Award size={12} />
+                  Officer Authorized
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
+                <span className="font-semibold text-slate-300">{user?.department || 'Public Works Department'}</span>
+                <span>•</span>
+                <span className="text-blue-400 font-medium">{user?.assignedRegion || 'Downtown Sector Jurisdiction'}</span>
+              </p>
+            </div>
+          </div>
+
+          {/* Quick Officer Credentials Details Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 w-full lg:w-auto">
+            
+            {/* Email */}
+            <div className="bg-slate-950/70 border border-slate-800/80 rounded-xl p-2.5 flex flex-col justify-center">
+              <span className="text-[9px] uppercase font-bold text-slate-500 flex items-center gap-1">
+                <Mail size={10} className="text-blue-400" /> Official Email
+              </span>
+              <span className="text-xs font-mono font-bold text-slate-200 mt-0.5 truncate" title={user?.email || 'officer@civicfix.gov'}>
+                {user?.email || 'officer@civicfix.gov'}
+              </span>
+            </div>
+
+            {/* Username / Officer ID */}
+            <div className="bg-slate-950/70 border border-slate-800/80 rounded-xl p-2.5 flex flex-col justify-center">
+              <span className="text-[9px] uppercase font-bold text-slate-500 flex items-center gap-1">
+                <User size={10} className="text-blue-400" /> Officer Name
+              </span>
+              <span className="text-xs font-bold text-slate-200 mt-0.5 truncate">
+                {user?.name || 'Robert Chen'}
+              </span>
+            </div>
+
+            {/* Badge / Code */}
+            <div className="bg-slate-950/70 border border-slate-800/80 rounded-xl p-2.5 flex flex-col justify-center">
+              <span className="text-[9px] uppercase font-bold text-slate-500 flex items-center gap-1">
+                <Key size={10} className="text-amber-400" /> Officer Coupon
+              </span>
+              <span className="text-xs font-mono font-bold text-amber-300 mt-0.5">
+                OFFICER123
+              </span>
+            </div>
+
+            {/* Contact Phone */}
+            <div className="bg-slate-950/70 border border-slate-800/80 rounded-xl p-2.5 flex flex-col justify-center">
+              <span className="text-[9px] uppercase font-bold text-slate-500 flex items-center gap-1">
+                <Phone size={10} className="text-emerald-400" /> Duty Contact
+              </span>
+              <span className="text-xs font-mono font-bold text-slate-300 mt-0.5 truncate">
+                {user?.phone || '+1 (555) 014-9988'}
+              </span>
+            </div>
+
+          </div>
+
+        </div>
+      </Card>
+
       {/* Officer Metric Banner */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card hoverable={false} className="border-slate-800/60 bg-slate-900/40 p-5 flex items-center justify-between">
