@@ -55,16 +55,15 @@ export const appwriteDatabase = {
   async createComplaint(data: any): Promise<any | null> {
     if (!this.isConfigured()) return null;
 
-    // Clean payload matching created Appwrite attributes
-    const cleanPayload: Record<string, any> = {
+    const fullPayload: Record<string, any> = {
       title: data.title || '',
       description: data.description || '',
       category: data.category || 'General',
       priority: data.priority || 'medium',
       status: data.status || 'submitted',
       imageUrl: data.imageUrl || data.image_url || null,
-      lat: typeof data.location?.lat === 'number' ? data.location.lat : null,
-      lng: typeof data.location?.lng === 'number' ? data.location.lng : null,
+      lat: typeof data.location?.lat === 'number' ? data.location.lat : (typeof data.lat === 'number' ? data.lat : null),
+      lng: typeof data.location?.lng === 'number' ? data.location.lng : (typeof data.lng === 'number' ? data.lng : null),
       address: data.location?.address || data.address || '',
       reporterId: data.reporterId || data.reporter_id || '',
       reporterName: data.reporterName || data.reporter_name || 'Citizen',
@@ -76,13 +75,35 @@ export const appwriteDatabase = {
         DATABASE_ID,
         COMPLAINTS_COLLECTION_ID,
         ID.unique(),
-        cleanPayload
+        fullPayload
       );
       console.log('[Appwrite Database] Complaint saved successfully to Appwrite:', doc.$id);
       return doc;
     } catch (err: any) {
-      console.warn('[Appwrite Database] createComplaint notice:', err?.message || err);
-      return null;
+      console.warn('[Appwrite Database] Full payload write notice:', err?.message || err);
+
+      // If attribute mismatch error, retry with only verified base attributes
+      try {
+        const basePayload = {
+          title: String(data.title || ''),
+          description: String(data.description || ''),
+          category: String(data.category || 'General'),
+          priority: String(data.priority || 'medium'),
+          status: String(data.status || 'submitted'),
+          imageUrl: data.imageUrl || data.image_url || null
+        };
+        const baseDoc = await databases.createDocument(
+          DATABASE_ID,
+          COMPLAINTS_COLLECTION_ID,
+          ID.unique(),
+          basePayload
+        );
+        console.log('[Appwrite Database] Base complaint saved to Appwrite:', baseDoc.$id);
+        return baseDoc;
+      } catch (retryErr: any) {
+        console.error('[Appwrite Database] createDocument failed:', retryErr?.message || retryErr);
+        return null;
+      }
     }
   },
 
