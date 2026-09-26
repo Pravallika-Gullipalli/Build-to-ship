@@ -6,30 +6,33 @@ import * as zod from 'zod';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { authService } from '../services/authService';
-import { Layers, ArrowRight, CheckCircle2, RotateCw } from 'lucide-react';
+import { Layers, ArrowRight, CheckCircle2, RotateCw, ShieldCheck, Key, Building2, User, Mail, Lock, Phone } from 'lucide-react';
 import Card from '../components/Card';
 
 const signupSchema = zod.object({
-  name: zod.string().optional(),
+  name: zod.string().min(2, 'Name must be at least 2 characters'),
   email: zod.string().min(1, 'Email is required').email('Invalid email address'),
   phone: zod.string().optional(),
   password: zod.string().min(6, 'Password must be at least 6 characters'),
   role: zod.enum(['citizen', 'officer'] as const),
-  agree: zod.boolean().refine(val => val === true, 'You must accept the terms')
+  department: zod.string().optional(),
+  couponCode: zod.string().optional(),
+  agree: zod.boolean().optional()
 }).superRefine((data, ctx) => {
-  if (data.role === 'officer') {
-    if (!data.name || data.name.trim().length < 2) {
+  if (data.role === 'citizen') {
+    if (!data.agree) {
       ctx.addIssue({
         code: zod.ZodIssueCode.custom,
-        message: 'Name must be at least 2 characters for officers',
-        path: ['name']
+        message: 'You must accept the terms to register as a citizen',
+        path: ['agree']
       });
     }
-    if (!data.phone || data.phone.trim().length < 10) {
+  } else if (data.role === 'officer') {
+    if (!data.couponCode || data.couponCode.trim().length === 0) {
       ctx.addIssue({
         code: zod.ZodIssueCode.custom,
-        message: 'Phone number must be at least 10 digits for officers',
-        path: ['phone']
+        message: 'Officer authorization coupon code is required (e.g. OFFICER123)',
+        path: ['couponCode']
       });
     }
   }
@@ -43,7 +46,7 @@ export const Signup: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
-  const redirectedState = location.state as { email?: string; password?: string } | null;
+  const redirectedState = location.state as { email?: string; password?: string; role?: 'citizen' | 'officer' } | null;
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [signupSuccess, setSignupSuccess] = useState(!!redirectedState?.email);
@@ -52,11 +55,12 @@ export const Signup: React.FC = () => {
   const [isVerifying, setIsVerifying] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
 
-  const [selectedRole, setSelectedRole] = useState<'citizen' | 'officer'>('citizen');
+  const [selectedRole, setSelectedRole] = useState<'citizen' | 'officer'>(redirectedState?.role || 'citizen');
 
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors }
   } = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
@@ -66,9 +70,30 @@ export const Signup: React.FC = () => {
       phone: '',
       password: '',
       role: 'citizen',
+      department: 'Public Works Department',
+      couponCode: 'OFFICER123',
       agree: false
     }
   });
+
+  const handleRoleChange = (role: 'citizen' | 'officer') => {
+    setSelectedRole(role);
+    setValue('role', role);
+    if (role === 'officer') {
+      setValue('name', 'Officer Robert Chen');
+      setValue('email', 'officer@civicfix.gov');
+      setValue('password', 'password123');
+      setValue('department', 'Public Works Department');
+      setValue('couponCode', 'OFFICER123');
+      setValue('agree', true);
+    } else {
+      setValue('name', '');
+      setValue('email', '');
+      setValue('password', '');
+      setValue('phone', '');
+      setValue('agree', false);
+    }
+  };
 
   // Cooldown countdown timer
   useEffect(() => {
@@ -81,12 +106,23 @@ export const Signup: React.FC = () => {
 
   const onSubmit = async (values: SignupFormValues) => {
     setIsSubmitting(true);
-    const finalName = values.name || values.email.split('@')[0];
-    const finalPhone = values.phone || '';
+    const finalName = values.name || (selectedRole === 'officer' ? 'Municipal Officer' : values.email.split('@')[0]);
+    const finalPhone = values.phone || (selectedRole === 'officer' ? '+1 (555) 987-6543' : '');
+    
+    // Validate officer coupon code if officer role
+    if (selectedRole === 'officer') {
+      const coupon = (values.couponCode || '').trim().toUpperCase();
+      if (!coupon) {
+        showToast('error', 'Coupon Code Required', 'Please enter your officer authorization coupon code.');
+        setIsSubmitting(false);
+        return;
+      }
+    }
+
     try {
       const result = await signup({
         name: finalName,
-        email: values.email,
+        email: values.email.trim(),
         phone: finalPhone,
         role: selectedRole,
         password: values.password
@@ -98,12 +134,8 @@ export const Signup: React.FC = () => {
         setResendCooldown(45);
         showToast('info', 'Verification Code Sent', `A 6-digit confirmation code was sent to ${values.email}.`);
       } else {
-        showToast('success', 'Account Created', `Successfully registered as a ${selectedRole}!`);
-        if (selectedRole === 'citizen') {
-          navigate('/citizen/dashboard');
-        } else {
-          navigate('/officer/dashboard');
-        }
+        showToast('success', 'Officer Verified & Registered', `Welcome Officer ${finalName}! Credentials verified.`);
+        navigate('/officer/dashboard');
       }
     } catch (err: any) {
       const errorMessage = err?.message || 'Error processing registration.';
@@ -258,110 +290,235 @@ export const Signup: React.FC = () => {
 
         <Card hoverable={false} className="border-slate-800/80 bg-slate-900/40 p-8 shadow-2xl backdrop-blur-xl">
           <div className="text-center mb-6">
-            <h2 className="text-xl font-bold text-white">Create New Account</h2>
-            <p className="text-xs text-slate-400 mt-1">Get started with automated civic reporting</p>
+            <h2 className="text-xl font-bold text-white">
+              {selectedRole === 'officer' ? 'Officer Portal Registration' : 'Create Citizen Account'}
+            </h2>
+            <p className="text-xs text-slate-400 mt-1">
+              {selectedRole === 'officer' 
+                ? 'Enter official credentials & coupon code to activate officer portal' 
+                : 'Get started with automated civic reporting in your city'}
+            </p>
           </div>
 
           {/* Role selector switches */}
           <div className="grid grid-cols-2 gap-2 mb-6">
             <button
               type="button"
-              onClick={() => setSelectedRole('citizen')}
-              className={`py-2.5 rounded-lg border text-xxs font-bold uppercase transition-all duration-200
+              onClick={() => handleRoleChange('citizen')}
+              className={`py-2.5 rounded-lg border text-xxs font-bold uppercase transition-all duration-200 flex items-center justify-center gap-1.5
                 ${selectedRole === 'citizen'
                   ? 'bg-blue-600 border-blue-500 text-white shadow-glow-blue'
                   : 'border-slate-800 bg-slate-900/30 text-slate-400 hover:border-slate-700'
                 }`}
             >
+              <User size={14} />
               Citizen Account
             </button>
             <button
               type="button"
-              onClick={() => setSelectedRole('officer')}
-              className={`py-2.5 rounded-lg border text-xxs font-bold uppercase transition-all duration-200
+              onClick={() => handleRoleChange('officer')}
+              className={`py-2.5 rounded-lg border text-xxs font-bold uppercase transition-all duration-200 flex items-center justify-center gap-1.5
                 ${selectedRole === 'officer'
-                  ? 'bg-blue-600 border-blue-500 text-white shadow-glow-blue'
+                  ? 'bg-indigo-600 border-indigo-500 text-white shadow-glow-blue'
                   : 'border-slate-800 bg-slate-900/30 text-slate-400 hover:border-slate-700'
                 }`}
             >
-              Officer Account
+              <ShieldCheck size={14} />
+              Officer Portal
             </button>
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">
-            <div className="flex flex-col gap-1">
-              <label className="text-[10px] uppercase font-bold text-slate-400">Full Name</label>
-              <input
-                {...register('name')}
-                placeholder="Jane Doe"
-                type="text"
-                className="bg-slate-950 border border-slate-800/80 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500 text-slate-200 transition-colors"
-              />
-              {errors.name && <span className="text-[10px] text-rose-400">{errors.name.message}</span>}
-            </div>
+          {selectedRole === 'officer' ? (
+            /* Dedicated Officer Registration Form */
+            <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">
+              <div className="p-3 bg-indigo-950/40 border border-indigo-500/30 rounded-xl flex items-start gap-2.5 mb-1">
+                <ShieldCheck size={18} className="text-indigo-400 shrink-0 mt-0.5" />
+                <div className="text-[11px] text-indigo-200 leading-snug">
+                  <strong>Municipal Officer Access:</strong> Requires your official department email, password, and municipal authorization coupon code.
+                </div>
+              </div>
 
-            <div className="flex flex-col gap-1">
-              <label className="text-[10px] uppercase font-bold text-slate-400">Email Address</label>
-              <input
-                {...register('email')}
-                placeholder="jane@example.com"
-                type="email"
-                className="bg-slate-950 border border-slate-800/80 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500 text-slate-200 transition-colors"
-              />
-              {errors.email && <span className="text-[10px] text-rose-400">{errors.email.message}</span>}
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <label className="text-[10px] uppercase font-bold text-slate-400">Phone Number</label>
-              <input
-                {...register('phone')}
-                placeholder="+1 (555) 000-0000"
-                type="text"
-                className="bg-slate-950 border border-slate-800/80 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500 text-slate-200 transition-colors"
-              />
-              {errors.phone && <span className="text-[10px] text-rose-400">{errors.phone.message}</span>}
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <label className="text-[10px] uppercase font-bold text-slate-400">Password</label>
-              <input
-                {...register('password')}
-                placeholder="Minimum 6 characters..."
-                type="password"
-                className="bg-slate-950 border border-slate-800/80 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500 text-slate-200 transition-colors"
-              />
-              {errors.password && <span className="text-[10px] text-rose-400">{errors.password.message}</span>}
-            </div>
-
-            <div className="flex flex-col gap-1.5 mt-2">
-              <label className="flex items-start gap-2 cursor-pointer select-none">
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
+                  <User size={12} className="text-indigo-400" />
+                  Officer Full Name / Badge Name
+                </label>
                 <input
-                  {...register('agree')}
-                  type="checkbox"
-                  className="mt-0.5 border-slate-800 bg-slate-950 text-blue-600 rounded focus:ring-blue-500"
+                  {...register('name')}
+                  placeholder="Officer Robert Chen"
+                  type="text"
+                  className="bg-slate-950 border border-slate-800/80 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-indigo-500 text-slate-200 transition-colors"
                 />
-                <span className="text-xxs text-slate-400 leading-normal">
-                  I consent to sharing my GPS location when submitting infrastructure complaints to municipal services.
-                </span>
-              </label>
-              {errors.agree && <span className="text-[10px] text-rose-400">{errors.agree.message}</span>}
-            </div>
+                {errors.name && <span className="text-[10px] text-rose-400">{errors.name.message}</span>}
+              </div>
 
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="bg-blue-600 hover:bg-blue-500 hover:shadow-glow-blue disabled:bg-slate-800 text-white font-bold text-xs py-3.5 rounded-xl transition-all flex items-center justify-center gap-1.5 mt-3 shadow-lg"
-            >
-              {isSubmitting ? (
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                <>
-                  Register Account
-                  <ArrowRight size={14} />
-                </>
-              )}
-            </button>
-          </form>
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
+                  <Mail size={12} className="text-indigo-400" />
+                  Official Department Email
+                </label>
+                <input
+                  {...register('email')}
+                  placeholder="officer@civicfix.gov"
+                  type="email"
+                  className="bg-slate-950 border border-slate-800/80 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-indigo-500 text-slate-200 transition-colors"
+                />
+                {errors.email && <span className="text-[10px] text-rose-400">{errors.email.message}</span>}
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
+                  <Lock size={12} className="text-indigo-400" />
+                  Officer Password
+                </label>
+                <input
+                  {...register('password')}
+                  placeholder="Enter secure officer password..."
+                  type="password"
+                  className="bg-slate-950 border border-slate-800/80 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-indigo-500 text-slate-200 transition-colors"
+                />
+                {errors.password && <span className="text-[10px] text-rose-400">{errors.password.message}</span>}
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
+                  <Building2 size={12} className="text-indigo-400" />
+                  Assigned Department
+                </label>
+                <select
+                  {...register('department')}
+                  className="bg-slate-950 border border-slate-800/80 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-indigo-500 text-slate-200 transition-colors"
+                >
+                  <option value="Public Works Department">Public Works Department</option>
+                  <option value="Roads & Transport Authority">Roads & Transport Authority</option>
+                  <option value="Water Supply & Drainage">Water Supply & Drainage</option>
+                  <option value="Electricity & Power Distribution">Electricity & Power Distribution</option>
+                  <option value="Solid Waste Management">Solid Waste Management</option>
+                  <option value="Municipal Corporation">Municipal Corporation</option>
+                </select>
+              </div>
+
+              <div className="flex flex-col gap-1 bg-indigo-950/30 p-2.5 rounded-xl border border-indigo-500/20 mt-1">
+                <label className="text-[10px] uppercase font-bold text-amber-300 flex items-center gap-1">
+                  <Key size={12} className="text-amber-400" />
+                  Officer Authorization Coupon Code *
+                </label>
+                <input
+                  {...register('couponCode')}
+                  placeholder="e.g. OFFICER123"
+                  type="text"
+                  className="bg-slate-950 border border-amber-500/40 rounded-lg px-3 py-2 text-xs font-mono font-bold tracking-wider outline-none focus:border-amber-400 text-amber-200 transition-colors uppercase"
+                />
+                <span className="text-[10px] text-slate-400">
+                  Municipal authority security key (Standard code: <strong className="text-amber-300 font-mono">OFFICER123</strong>)
+                </span>
+                {errors.couponCode && <span className="text-[10px] text-rose-400">{errors.couponCode.message}</span>}
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="bg-indigo-600 hover:bg-indigo-500 hover:shadow-glow-blue disabled:bg-slate-800 text-white font-bold text-xs py-3.5 rounded-xl transition-all flex items-center justify-center gap-1.5 mt-3 shadow-lg"
+              >
+                {isSubmitting ? (
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <span>Verify Coupon & Activate Officer Portal</span>
+                    <ArrowRight size={14} />
+                  </>
+                )}
+              </button>
+            </form>
+          ) : (
+            /* Standard Citizen Registration Form */
+            <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
+                  <User size={12} className="text-blue-400" />
+                  Full Name
+                </label>
+                <input
+                  {...register('name')}
+                  placeholder="Jane Doe"
+                  type="text"
+                  className="bg-slate-950 border border-slate-800/80 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500 text-slate-200 transition-colors"
+                />
+                {errors.name && <span className="text-[10px] text-rose-400">{errors.name.message}</span>}
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
+                  <Mail size={12} className="text-blue-400" />
+                  Email Address
+                </label>
+                <input
+                  {...register('email')}
+                  placeholder="jane@example.com"
+                  type="email"
+                  className="bg-slate-950 border border-slate-800/80 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500 text-slate-200 transition-colors"
+                />
+                {errors.email && <span className="text-[10px] text-rose-400">{errors.email.message}</span>}
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
+                  <Phone size={12} className="text-blue-400" />
+                  Phone Number
+                </label>
+                <input
+                  {...register('phone')}
+                  placeholder="+1 (555) 000-0000"
+                  type="text"
+                  className="bg-slate-950 border border-slate-800/80 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500 text-slate-200 transition-colors"
+                />
+                {errors.phone && <span className="text-[10px] text-rose-400">{errors.phone.message}</span>}
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
+                  <Lock size={12} className="text-blue-400" />
+                  Password
+                </label>
+                <input
+                  {...register('password')}
+                  placeholder="Minimum 6 characters..."
+                  type="password"
+                  className="bg-slate-950 border border-slate-800/80 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500 text-slate-200 transition-colors"
+                />
+                {errors.password && <span className="text-[10px] text-rose-400">{errors.password.message}</span>}
+              </div>
+
+              <div className="flex flex-col gap-1.5 mt-2">
+                <label className="flex items-start gap-2 cursor-pointer select-none">
+                  <input
+                    {...register('agree')}
+                    type="checkbox"
+                    className="mt-0.5 border-slate-800 bg-slate-950 text-blue-600 rounded focus:ring-blue-500"
+                  />
+                  <span className="text-xxs text-slate-400 leading-normal">
+                    I consent to sharing my GPS location when submitting infrastructure complaints to municipal services.
+                  </span>
+                </label>
+                {errors.agree && <span className="text-[10px] text-rose-400">{errors.agree.message}</span>}
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="bg-blue-600 hover:bg-blue-500 hover:shadow-glow-blue disabled:bg-slate-800 text-white font-bold text-xs py-3.5 rounded-xl transition-all flex items-center justify-center gap-1.5 mt-3 shadow-lg"
+              >
+                {isSubmitting ? (
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <span>Register Citizen Account</span>
+                    <ArrowRight size={14} />
+                  </>
+                )}
+              </button>
+            </form>
+          )}
 
           <div className="text-center mt-6 border-t border-slate-800/80 pt-4">
             <span className="text-xxs text-slate-400">Already registered? </span>
