@@ -1,20 +1,16 @@
 import type { SystemAnalytics, MonthlyComplaints, PriorityDistribution, DepartmentPerformance, CategoryDistribution } from '../types/analytics';
-import { supabase } from '../lib/supabaseClient';
+import { complaintService } from './complaintService';
 
 export const analyticsService = {
   async getAnalyticsSummary(): Promise<SystemAnalytics> {
-    const { data: complaints, error } = await supabase
-      .from('complaints')
-      .select('*');
-
-    if (error) throw error;
+    const complaints = await complaintService.getAllComplaints();
 
     const total = complaints?.length || 0;
     const resolved = complaints?.filter(c => c.status === 'resolved').length || 0;
     const pending = total - resolved;
     
     // Calculate total duplicate reports represented
-    const duplicates = (complaints || []).reduce((acc, c) => acc + (c.reports_count > 1 ? c.reports_count - 1 : 0), 0);
+    const duplicates = (complaints || []).reduce((acc, c) => acc + (c.reportsCount > 1 ? c.reportsCount - 1 : 0), 0);
 
     const aiVerificationRate = total > 0 ? 100 : 0;
     const avgResolutionTimeDays = 2.4;

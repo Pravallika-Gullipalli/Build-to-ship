@@ -1,46 +1,40 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getDb } from '../utils/mockDb';
-import { supabase } from '../lib/supabaseClient';
 import Card from '../components/Card';
 import { User as UserIcon, Shield, Briefcase, Mail } from 'lucide-react';
+import { getAvatarUrl } from '../utils/avatar';
 import type { UserRole } from '../types/user';
+import { authService } from '../services/authService';
 
 export const AdminUsers: React.FC = () => {
   const [roleFilter, setRoleFilter] = useState<UserRole | 'all'>('all');
 
-  // Query users from local mock DB & Supabase live DB
+  // Query users from local registry & mock DB
   const { data: users, isLoading } = useQuery({
     queryKey: ['admin-users', roleFilter],
     queryFn: async () => {
-      try {
-        let query = supabase.from('profiles').select('*');
-        if (roleFilter !== 'all') {
-          query = query.eq('role', roleFilter);
-        }
-        const { data, error } = await query;
-        if (error) throw error;
-
-        if (data && data.length > 0) {
-          return data.map(row => ({
-            id: row.id,
-            name: row.name,
-            email: row.email,
-            role: row.role as UserRole,
-            phone: row.phone || '',
-            department: row.department,
-            assignedRegion: row.assigned_region,
-            avatarUrl: row.avatar_url,
-            createdAt: row.created_at || new Date().toISOString()
-          }));
-        }
-      } catch (err) {
-        console.warn('Failed to query profiles from Supabase, falling back to local DB:', err);
-      }
-
       const db = getDb();
-      if (roleFilter === 'all') return db.users;
-      return db.users.filter(u => u.role === roleFilter);
+      const registry = authService.getRegistry();
+      const registeredUsers = Object.values(registry).map(acc => ({
+        id: acc.id,
+        name: acc.name,
+        email: acc.email,
+        role: acc.role,
+        phone: acc.phone || '',
+        department: acc.department,
+        assignedRegion: acc.assignedRegion,
+        avatarUrl: acc.avatarUrl,
+        createdAt: acc.createdAt || new Date().toISOString()
+      }));
+
+      const mergedMap = new Map<string, any>();
+      db.users.forEach(u => mergedMap.set(u.id, u));
+      registeredUsers.forEach(u => mergedMap.set(u.id, u));
+      const allUsers = Array.from(mergedMap.values());
+
+      if (roleFilter === 'all') return allUsers;
+      return allUsers.filter(u => u.role === roleFilter);
     }
   });
 
@@ -98,7 +92,7 @@ export const AdminUsers: React.FC = () => {
                   return (
                     <tr key={u.id} className="hover:bg-slate-900/30 transition-colors">
                       <td className="p-4 flex items-center gap-3">
-                        <img src={u.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120'} alt={u.name} className="w-8 h-8 rounded-lg object-cover border border-slate-800 shrink-0" />
+                        <img src={getAvatarUrl(u)} alt={u.name} className="w-8 h-8 rounded-lg object-cover border border-slate-800 shrink-0" />
                         <div>
                           <p className="font-bold text-white leading-tight">{u.name}</p>
                           <p className="text-[10px] text-slate-500 font-medium">{u.phone || 'No phone attached'}</p>

@@ -28,7 +28,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     setToasts(prev => prev.filter(t => t.id !== id));
   }, []);
 
-  const showToast = useCallback((type: ToastType, title: string, message: string, duration = 4000) => {
+  const showToast = useCallback((type: ToastType, title: string, message: string, duration = 5000) => {
     const id = Math.random().toString(36).substring(2, 9);
     const newToast: Toast = { id, type, title, message, duration };
     
@@ -40,6 +40,26 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       }, duration);
     }
   }, [removeToast]);
+
+  // Listen for OTP dispatch events
+  React.useEffect(() => {
+    const handleOtpEvent = (e: any) => {
+      const detail = e.detail;
+      if (detail && detail.code) {
+        showToast(
+          'info',
+          `🔐 OTP Verification Code`,
+          `Code for ${detail.destination}: ${detail.code} (Expires in 10 mins)`,
+          9000
+        );
+      }
+    };
+
+    window.addEventListener('civicfix_otp_dispatched', handleOtpEvent);
+    return () => {
+      window.removeEventListener('civicfix_otp_dispatched', handleOtpEvent);
+    };
+  }, [showToast]);
 
   return (
     <NotificationContext.Provider value={{ toasts, showToast, removeToast }}>

@@ -8,7 +8,6 @@ import { geminiService } from '../services/geminiService';
 import type { AiAnalysisResult } from '../services/geminiService';
 import Card from '../components/Card';
 import Badge from '../components/Badge';
-import MapComponent from '../components/MapComponent';
 import { 
   ShieldAlert, 
   MapPin, 
@@ -235,10 +234,11 @@ export const OfficerDashboard: React.FC = () => {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Queue Content */}
+      <div className="flex flex-col gap-6">
         
-        {/* Left Column: Assigned Queue list */}
-        <div className="lg:col-span-2 flex flex-col gap-4">
+        {/* Assigned Queue list */}
+        <div className="flex flex-col gap-4">
           <div className="flex justify-between items-center px-2">
             <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
               <ShieldAlert size={16} className="text-rose-500 animate-pulse" />
@@ -395,37 +395,23 @@ export const OfficerDashboard: React.FC = () => {
           )}
         </div>
 
-        {/* Right Column: Dispatch Sector Map & Stats */}
-        <div className="flex flex-col gap-6">
-          <Card hoverable={false} className="border-slate-800/60 bg-slate-900/40 p-4">
-            <h3 className="font-bold text-xs uppercase tracking-wider text-white border-b border-slate-800/60 pb-3 mb-4">
-              My Sector Dispatch Map
-            </h3>
-            <div className="h-64 rounded-xl overflow-hidden">
-              <MapComponent
-                complaints={currentQueue}
-                zoom={12}
-                interactive={true}
-              />
-            </div>
-          </Card>
-          
-          <Card hoverable={false} className="border-slate-800/60 bg-slate-900/40 p-4">
-            <h3 className="font-bold text-xs uppercase tracking-wider text-white border-b border-slate-800/60 pb-3 mb-4">
-              Duty Guidelines
-            </h3>
-            <div className="flex flex-col gap-3 text-xxs text-slate-400 leading-relaxed font-semibold">
-              <p className="flex gap-2">
-                <AlertTriangle size={14} className="text-rose-500 shrink-0" />
-                Critical issues must be self-assigned and investigated within 1 hour.
-              </p>
-              <p className="flex gap-2">
-                <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
-                Ensure all resolution works are documented with photographic updates.
-              </p>
-            </div>
-          </Card>
-        </div>
+        {/* Duty Guidelines Banner */}
+        <Card hoverable={false} className="border-slate-800/60 bg-slate-900/40 p-4 mt-2">
+          <h3 className="font-bold text-xs uppercase tracking-wider text-white border-b border-slate-800/60 pb-2 mb-3 flex items-center gap-2">
+            <CheckCircle2 size={14} className="text-blue-400" />
+            Duty Guidelines & Standards
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xxs text-slate-400 leading-relaxed font-semibold">
+            <p className="flex items-center gap-2 bg-slate-950/40 p-2.5 rounded-lg border border-slate-850">
+              <AlertTriangle size={14} className="text-rose-500 shrink-0" />
+              Critical issues must be investigated within 1 hour.
+            </p>
+            <p className="flex items-center gap-2 bg-slate-950/40 p-2.5 rounded-lg border border-slate-850">
+              <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
+              Ensure all resolution works are documented with photographic updates.
+            </p>
+          </div>
+        </Card>
 
       </div>
     </div>

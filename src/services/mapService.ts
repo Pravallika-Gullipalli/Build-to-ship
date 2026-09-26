@@ -1,5 +1,5 @@
-import type { Complaint, ComplaintDbRow } from '../types/complaint';
-import { supabase } from '../lib/supabaseClient';
+import type { Complaint } from '../types/complaint';
+import { complaintService } from './complaintService';
 
 const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
   const R = 6371; // Radius of earth in km
@@ -13,61 +13,22 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * c;
 };
 
-const mapRowToComplaint = (row: ComplaintDbRow): Complaint => ({
-  id: row.id,
-  title: row.title,
-  description: row.description,
-  category: row.category,
-  priority: row.priority,
-  status: row.status,
-  imageUrl: row.image_url || undefined,
-  location: {
-    lat: row.lat,
-    lng: row.lng,
-    address: row.address
-  },
-  reporterId: row.reporter_id || '',
-  reporterName: row.reporter_name,
-  assignedOfficerId: row.assigned_officer_id || undefined,
-  assignedOfficerName: row.assigned_officer_name || undefined,
-  createdAt: row.created_at,
-  updatedAt: row.updated_at,
-  reportsCount: row.reports_count,
-  statusTimeline: row.status_timeline || [],
-  comments: []
-});
-
 export const mapService = {
   async getNearbyComplaints(lat: number, lng: number, radiusKm = 1.5): Promise<Complaint[]> {
-    const { data, error } = await supabase
-      .from('complaints')
-      .select('*')
-      .neq('status', 'resolved');
-
-    if (error) throw error;
-
-    return (data || [])
-      .map(mapRowToComplaint)
+    const complaints = await complaintService.getAllComplaints();
+    return complaints
+      .filter(c => c.status !== 'resolved')
       .filter(c => calculateDistance(lat, lng, c.location.lat, c.location.lng) <= radiusKm);
   },
 
   async getComplaintMarkers(): Promise<Complaint[]> {
-    const { data, error } = await supabase
-      .from('complaints')
-      .select('*')
-      .neq('status', 'resolved');
-
-    if (error) throw error;
-    return (data || []).map(mapRowToComplaint);
+    const complaints = await complaintService.getAllComplaints();
+    return complaints.filter(c => c.status !== 'resolved');
   },
 
   async getHeatmapData(): Promise<{ lat: number; lng: number; intensity: number }[]> {
-    const { data, error } = await supabase
-      .from('complaints')
-      .select('lat, lng, priority')
-      .neq('status', 'resolved');
-
-    if (error) throw error;
+    const complaints = await complaintService.getAllComplaints();
+    const active = complaints.filter(c => c.status !== 'resolved');
 
     const intensityMap = {
       critical: 1.0,
@@ -76,11 +37,20 @@ export const mapService = {
       low: 0.2
     };
 
-    return (data || []).map(row => ({
-      lat: row.lat,
-      lng: row.lng,
-      intensity: intensityMap[row.priority as keyof typeof intensityMap] || 0.5
+    return active.map(c => ({
+      lat: c.location.lat,
+      lng: c.location.lng,
+      intensity: intensityMap[c.priority as keyof typeof intensityMap] || 0.5
     }));
+  },
+
+  getStaticMapUrl(lat: number, lng: number, zoom = 15, width = 600, height = 300): string {
+    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+    if (apiKey) {
+      return `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=${zoom}&size=${width}x${height}&markers=color:red%7C${lat},${lng}&key=${apiKey}`;
+    }
+    // Fallback static map imagery using OpenStreetMap static tiles
+    return `https://staticmap.openstreetmap.de/staticmap.php?center=${lat},${lng}&zoom=${zoom}&size=${width}x${height}&maptype=mapnik&markers=${lat},${lng},ol-marker`;
   },
 
   async reverseGeocode(lat: number, lng: number): Promise<string> {
@@ -111,6 +81,18 @@ export const mapService = {
       }
     } catch (e) {
       console.warn('Nominatim reverse geocoding failed, using coordinates format:', e);
+    }
+
+    // Secondary BigDataCloud free client-side reverse geocoder fallback
+    try {
+      const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`);
+      const json = await response.json();
+      if (json && (json.locality || json.city || json.principalSubdivision)) {
+        const parts = [json.locality || json.city, json.principalSubdivision, json.countryName].filter(Boolean);
+        return parts.join(', ');
+      }
+    } catch {
+      // ignore
     }
 
     return `Around ${lat.toFixed(4)} N, ${lng.toFixed(4)} W`;

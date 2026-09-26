@@ -2,7 +2,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { User, LoginCredentials, SignupData, UserRole } from '../types/user';
 import { authService } from '../services/authService';
-import { supabase } from '../lib/supabaseClient';
 
 interface AuthContextType {
   user: User | null;
@@ -44,33 +43,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
     initAuth();
-
-    // Listen to Supabase auth events (including email confirmation redirects)
-    const isSupabaseConfigured = !!import.meta.env.VITE_SUPABASE_URL && !!import.meta.env.VITE_SUPABASE_ANON_KEY;
-    let subscription: any = null;
-
-    if (isSupabaseConfigured) {
-      const res = supabase.auth.onAuthStateChange(async (event, session) => {
-        if (session?.user) {
-          try {
-            const loggedUser = await authService.ensureProfileExists(session.user);
-            setUser(loggedUser);
-          } catch (err) {
-            console.error('Failed to ensure profile exists on auth state change:', err);
-          }
-        } else if (event === 'SIGNED_OUT') {
-          setUser(null);
-          authService.clearFallbackSession();
-        }
-      });
-      subscription = res.data.subscription;
-    }
-
-    return () => {
-      if (subscription) {
-        subscription.unsubscribe();
-      }
-    };
   }, []);
 
   const login = async (credentials: LoginCredentials) => {

@@ -1,249 +1,360 @@
-import type { Complaint, ComplaintFilters, ComplaintComment, ComplaintStatus, TimelineStep, ComplaintDbRow, CommentDbRow } from '../types/complaint';
-import { supabase } from '../lib/supabaseClient';
+import type { Complaint, ComplaintFilters, ComplaintComment, ComplaintStatus, TimelineStep } from '../types/complaint';
+import { appwriteDatabase } from './appwriteDatabase';
 
-const isValidUuid = (str: string): boolean => {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(str);
+const STORAGE_KEY = 'civicfix_complaints_store';
+const COMMENTS_KEY = 'civicfix_comments_store';
+
+const initialSampleComplaints: Complaint[] = [
+  {
+    id: 'comp-101',
+    title: 'Severe Pothole Cluster on Ring Road',
+    description: 'Multiple deep potholes spanning 50 meters near the South Gate junction causing traffic congestion and vehicle tire damage.',
+    category: 'Roads & Streets',
+    priority: 'high',
+    status: 'work_started',
+    imageUrl: 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=800&auto=format&fit=crop&q=80',
+    location: {
+      lat: 16.4793,
+      lng: 80.6619,
+      address: 'Ring Road, Near South Gate Junction'
+    },
+    reporterId: 'user-demo-1',
+    reporterName: 'John Citizen',
+    assignedOfficerId: 'off-1',
+    assignedOfficerName: 'Officer Sarah Mitchell',
+    createdAt: new Date(Date.now() - 3600 * 1000 * 48).toISOString(),
+    updatedAt: new Date(Date.now() - 3600 * 1000 * 12).toISOString(),
+    reportsCount: 4,
+    statusTimeline: [
+      { status: 'submitted', title: 'Complaint Filed', description: 'Filed by John Citizen', timestamp: new Date(Date.now() - 3600 * 1000 * 48).toISOString(), completed: true },
+      { status: 'ai_verified', title: 'AI Verification', description: 'Severity classified as HIGH (Roads & Streets)', timestamp: new Date(Date.now() - 3600 * 1000 * 47).toISOString(), completed: true },
+      { status: 'assigned', title: 'Assigned to Officer', description: 'Assigned to Officer Sarah Mitchell', timestamp: new Date(Date.now() - 3600 * 1000 * 24).toISOString(), completed: true },
+      { status: 'work_started', title: 'Repair Underway', description: 'Asphalt crew dispatched', timestamp: new Date(Date.now() - 3600 * 1000 * 12).toISOString(), completed: true },
+      { status: 'resolved', title: 'Resolved', description: 'Pending road surface completion', timestamp: '', completed: false }
+    ],
+    comments: [
+      {
+        id: 'comm-1',
+        complaintId: 'comp-101',
+        userId: 'off-1',
+        userName: 'Officer Sarah Mitchell',
+        userRole: 'officer',
+        content: 'Repair team has started work this morning. Expecting completion within 24 hours.',
+        createdAt: new Date(Date.now() - 3600 * 1000 * 10).toISOString()
+      }
+    ]
+  },
+  {
+    id: 'comp-102',
+    title: 'Street Light Failure at Civic Square',
+    description: 'Series of 4 street lights are unlit at night creating safety concerns for pedestrians.',
+    category: 'Electricity',
+    priority: 'medium',
+    status: 'assigned',
+    imageUrl: 'https://images.unsplash.com/photo-1517457373958-b7bdd4587205?w=800&auto=format&fit=crop&q=80',
+    location: {
+      lat: 16.4820,
+      lng: 80.6650,
+      address: 'Civic Square, 2nd Cross'
+    },
+    reporterId: 'user-demo-2',
+    reporterName: 'Emily Clark',
+    assignedOfficerId: 'off-1',
+    assignedOfficerName: 'Officer Sarah Mitchell',
+    createdAt: new Date(Date.now() - 3600 * 1000 * 24).toISOString(),
+    updatedAt: new Date(Date.now() - 3600 * 1000 * 6).toISOString(),
+    reportsCount: 2,
+    statusTimeline: [
+      { status: 'submitted', title: 'Complaint Filed', description: 'Filed by Emily Clark', timestamp: new Date(Date.now() - 3600 * 1000 * 24).toISOString(), completed: true },
+      { status: 'ai_verified', title: 'AI Verification', description: 'Severity classified as MEDIUM (Electricity)', timestamp: new Date(Date.now() - 3600 * 1000 * 23).toISOString(), completed: true },
+      { status: 'assigned', title: 'Assigned to Officer', description: 'Assigned to Electrical Department', timestamp: new Date(Date.now() - 3600 * 1000 * 6).toISOString(), completed: true },
+      { status: 'work_started', title: 'Repair Underway', description: 'Inspection scheduled', timestamp: '', completed: false },
+      { status: 'resolved', title: 'Resolved', description: 'Pending inspection', timestamp: '', completed: false }
+    ],
+    comments: []
+  }
+];
+
+const getStoredComplaints = (): Complaint[] => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      return JSON.parse(raw);
+    }
+  } catch (e) {
+    console.warn('Failed to parse local complaints storage:', e);
+  }
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(initialSampleComplaints));
+  return initialSampleComplaints;
 };
 
-const mapComplaint = (dbRow: ComplaintDbRow, comments: ComplaintComment[] = []): Complaint => ({
-  id: dbRow.id,
-  title: dbRow.title,
-  description: dbRow.description,
-  category: dbRow.category,
-  priority: dbRow.priority,
-  status: dbRow.status,
-  imageUrl: dbRow.image_url || undefined,
-  location: {
-    lat: dbRow.lat,
-    lng: dbRow.lng,
-    address: dbRow.address
-  },
-  reporterId: dbRow.reporter_id || '',
-  reporterName: dbRow.reporter_name,
-  assignedOfficerId: dbRow.assigned_officer_id || undefined,
-  assignedOfficerName: dbRow.assigned_officer_name || undefined,
-  createdAt: dbRow.created_at,
-  updatedAt: dbRow.updated_at,
-  reportsCount: dbRow.reports_count,
-  statusTimeline: (dbRow.status_timeline as TimelineStep[]) || [],
-  comments,
-  aiNotes: dbRow.ai_notes || undefined,
-  estimatedResolutionDate: dbRow.estimated_resolution_date || undefined
-});
+const saveStoredComplaints = (complaints: Complaint[]): void => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(complaints));
+  } catch (e) {
+    console.warn('Failed to write local complaints storage:', e);
+  }
+};
 
-const mapComment = (dbRow: CommentDbRow): ComplaintComment => ({
-  id: dbRow.id,
-  complaintId: dbRow.complaint_id,
-  userId: dbRow.user_id || '',
-  userName: dbRow.user_name,
-  userRole: dbRow.user_role,
-  content: dbRow.content,
-  createdAt: dbRow.created_at
-});
+const getStoredComments = (complaintId: string): ComplaintComment[] => {
+  try {
+    const raw = localStorage.getItem(`${COMMENTS_KEY}_${complaintId}`);
+    if (raw) {
+      return JSON.parse(raw);
+    }
+  } catch (e) {
+    console.warn('Failed to parse local comments storage:', e);
+  }
+  return [];
+};
+
+const saveStoredComments = (complaintId: string, comments: ComplaintComment[]): void => {
+  try {
+    localStorage.setItem(`${COMMENTS_KEY}_${complaintId}`, JSON.stringify(comments));
+  } catch (e) {
+    console.warn('Failed to save local comments:', e);
+  }
+};
 
 export const complaintService = {
   async getAllComplaints(): Promise<Complaint[]> {
-    const { data, error } = await supabase
-      .from('complaints')
-      .select('*')
-      .order('created_at', { ascending: false });
+    if (appwriteDatabase.isConfigured()) {
+      try {
+        const appwriteList = await appwriteDatabase.listComplaints(100);
+        if (appwriteList && appwriteList.length > 0) {
+          const localList = getStoredComplaints();
+          const mergedMap = new Map<string, Complaint>();
+          appwriteList.forEach(c => mergedMap.set(c.id, c));
+          localList.forEach(c => {
+            if (!mergedMap.has(c.id)) {
+              mergedMap.set(c.id, c);
+            }
+          });
+          const result = Array.from(mergedMap.values()).sort(
+            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
+          saveStoredComplaints(result);
+          return result;
+        }
+      } catch (err) {
+        console.warn('[Appwrite DB] fetch error, using local complaints fallback:', err);
+      }
+    }
 
-    if (error) throw error;
-    return (data || []).map(row => mapComplaint(row));
+    return getStoredComplaints();
   },
 
   async getComplaint(id: string): Promise<Complaint | null> {
-    const { data: complaint, error: compError } = await supabase
-      .from('complaints')
-      .select('*')
-      .eq('id', id)
-      .maybeSingle();
+    if (appwriteDatabase.isConfigured()) {
+      try {
+        const doc = await appwriteDatabase.getComplaint(id);
+        if (doc) {
+          const comments = await this.getComments(id);
+          doc.comments = comments;
+          return doc;
+        }
+      } catch {}
+    }
 
-    if (compError) throw compError;
-    if (!complaint) return null;
+    const local = getStoredComplaints().find(c => c.id === id);
+    if (local) {
+      local.comments = getStoredComments(id);
+      return local;
+    }
+    return null;
+  },
 
-    // Fetch comments
-    const { data: comments, error: commError } = await supabase
-      .from('comments')
-      .select('*')
-      .eq('complaint_id', id)
-      .order('created_at', { ascending: true });
-
-    if (commError) throw commError;
-
-    return mapComplaint(complaint, (comments || []).map(mapComment));
+  async getComments(complaintId: string): Promise<ComplaintComment[]> {
+    if (appwriteDatabase.isConfigured()) {
+      try {
+        const remote = await appwriteDatabase.listComments(complaintId);
+        if (remote && remote.length > 0) {
+          return remote;
+        }
+      } catch {}
+    }
+    return getStoredComments(complaintId);
   },
 
   async createComplaint(complaintData: Omit<Complaint, 'id' | 'createdAt' | 'updatedAt' | 'comments' | 'statusTimeline'>): Promise<Complaint> {
     const nowStr = new Date().toISOString();
+    const generatedId = `comp-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
     const statusTimeline: TimelineStep[] = [
-      { status: 'submitted', title: 'Complaint Filed', description: `Complaint submitted by ${complaintData.reporterName}`, timestamp: nowStr, completed: true },
-      { status: 'ai_verified', title: 'AI Verification', description: `AI classified under ${complaintData.category} with priority ${complaintData.priority.toUpperCase()}`, timestamp: new Date(Date.now() + 2000).toISOString(), completed: true },
+      { status: 'submitted', title: 'Complaint Filed', description: `Complaint submitted by ${complaintData.reporterName || 'Citizen'}`, timestamp: nowStr, completed: true },
+      { status: 'ai_verified', title: 'Verification', description: `Classified under ${complaintData.category} with priority ${complaintData.priority.toUpperCase()}`, timestamp: new Date(Date.now() + 1000).toISOString(), completed: true },
       { status: 'assigned', title: 'Officer Assigned', description: 'Awaiting officer assignment', timestamp: '', completed: false },
-      { status: 'work_started', title: 'Repair In Progress', description: 'Work crew scheduled/dispatched', timestamp: '', completed: false },
+      { status: 'work_started', title: 'Repair In Progress', description: 'Work crew scheduled', timestamp: '', completed: false },
       { status: 'resolved', title: 'Resolved', description: 'Issue resolved by city services', timestamp: '', completed: false }
     ];
 
-    const { data, error } = await supabase
-      .from('complaints')
-      .insert({
-        title: complaintData.title,
-        description: complaintData.description,
-        category: complaintData.category,
-        priority: complaintData.priority,
-        status: 'submitted',
-        image_url: complaintData.imageUrl || null,
-        lat: complaintData.location.lat,
-        lng: complaintData.location.lng,
-        address: complaintData.location.address,
-        reporter_id: isValidUuid(complaintData.reporterId) ? complaintData.reporterId : null,
-        reporter_name: complaintData.reporterName,
-        reports_count: complaintData.reportsCount || 1,
-        ai_notes: complaintData.aiNotes || null,
-        estimated_resolution_date: complaintData.estimatedResolutionDate || null,
-        status_timeline: statusTimeline
-      })
-      .select()
-      .single();
+    let newComplaint: Complaint = {
+      id: generatedId,
+      title: complaintData.title,
+      description: complaintData.description,
+      category: complaintData.category,
+      priority: complaintData.priority,
+      status: 'submitted',
+      imageUrl: complaintData.imageUrl,
+      location: complaintData.location,
+      reporterId: complaintData.reporterId || '',
+      reporterName: complaintData.reporterName || 'Citizen',
+      reportsCount: complaintData.reportsCount || 1,
+      createdAt: nowStr,
+      updatedAt: nowStr,
+      statusTimeline,
+      comments: [],
+      aiNotes: complaintData.aiNotes,
+      estimatedResolutionDate: complaintData.estimatedResolutionDate
+    };
 
-    if (error) throw error;
-    return mapComplaint(data);
+    // 1. Save to Appwrite Database if configured
+    if (appwriteDatabase.isConfigured()) {
+      try {
+        const appwriteDoc = await appwriteDatabase.createComplaint({
+          title: newComplaint.title,
+          description: newComplaint.description,
+          category: newComplaint.category,
+          priority: newComplaint.priority,
+          status: newComplaint.status,
+          imageUrl: newComplaint.imageUrl,
+          location: newComplaint.location,
+          reporterId: newComplaint.reporterId,
+          reporterName: newComplaint.reporterName,
+          reportsCount: newComplaint.reportsCount
+        });
+
+        if (appwriteDoc?.$id) {
+          newComplaint.id = appwriteDoc.$id;
+          newComplaint.createdAt = appwriteDoc.$createdAt || nowStr;
+        }
+      } catch (err) {
+        console.warn('[Appwrite DB] Failed to save directly, saved locally:', err);
+      }
+    }
+
+    // 2. Persist locally
+    const currentList = getStoredComplaints();
+    const updatedList = [newComplaint, ...currentList.filter(c => c.id !== newComplaint.id)];
+    saveStoredComplaints(updatedList);
+
+    return newComplaint;
   },
 
   async updateComplaint(id: string, updates: Partial<Complaint>): Promise<Complaint> {
-    // 1. Fetch current ticket to process timeline changes if status updates
     const current = await this.getComplaint(id);
     if (!current) throw new Error('Complaint not found');
 
-    const dbUpdates: Partial<ComplaintDbRow> = {};
-    if (updates.title !== undefined) dbUpdates.title = updates.title;
-    if (updates.description !== undefined) dbUpdates.description = updates.description;
-    if (updates.category !== undefined) dbUpdates.category = updates.category;
-    if (updates.priority !== undefined) dbUpdates.priority = updates.priority;
-    if (updates.status !== undefined) dbUpdates.status = updates.status;
-    if (updates.imageUrl !== undefined) dbUpdates.image_url = updates.imageUrl;
-    if (updates.reportsCount !== undefined) dbUpdates.reports_count = updates.reportsCount;
-    if (updates.assignedOfficerId !== undefined) dbUpdates.assigned_officer_id = updates.assignedOfficerId;
-    if (updates.assignedOfficerName !== undefined) dbUpdates.assigned_officer_name = updates.assignedOfficerName;
-    if (updates.aiNotes !== undefined) dbUpdates.ai_notes = updates.aiNotes;
-    if (updates.estimatedResolutionDate !== undefined) dbUpdates.estimated_resolution_date = updates.estimatedResolutionDate;
+    const nowStr = new Date().toISOString();
+    let updatedTimeline = current.statusTimeline;
 
-    // Timeline calculation
     if (updates.status && updates.status !== current.status) {
-      const nowStr = new Date().toISOString();
       const targetStatus = updates.status;
-      
-      const newTimeline = current.statusTimeline.map(step => {
+      const order: ComplaintStatus[] = ['submitted', 'ai_verified', 'assigned', 'work_started', 'resolved'];
+      const targetIdx = order.indexOf(targetStatus);
+
+      updatedTimeline = current.statusTimeline.map(step => {
+        const stepIdx = order.indexOf(step.status);
         if (step.status === targetStatus) {
           return { ...step, completed: true, timestamp: nowStr };
         }
-        // Mark all prior steps as completed as well
-        const order: ComplaintStatus[] = ['submitted', 'ai_verified', 'assigned', 'work_started', 'resolved'];
-        const targetIdx = order.indexOf(targetStatus);
-        const stepIdx = order.indexOf(step.status);
-        
         if (stepIdx <= targetIdx) {
           return { ...step, completed: true, timestamp: step.timestamp || nowStr };
         }
         return step;
       });
-
-      dbUpdates.status_timeline = newTimeline;
     }
 
-    dbUpdates.updated_at = new Date().toISOString();
+    const updatedComplaint: Complaint = {
+      ...current,
+      ...updates,
+      updatedAt: nowStr,
+      statusTimeline: updatedTimeline
+    };
 
-    const { data, error } = await supabase
-      .from('complaints')
-      .update(dbUpdates)
-      .eq('id', id)
-      .select()
-      .single();
+    if (appwriteDatabase.isConfigured()) {
+      appwriteDatabase.updateComplaint(id, updates).catch(e => {
+        console.warn('[Appwrite Database] update notice:', e);
+      });
+    }
 
-    if (error) throw error;
-    return mapComplaint(data);
+    const currentList = getStoredComplaints();
+    const newList = currentList.map(c => (c.id === id ? updatedComplaint : c));
+    saveStoredComplaints(newList);
+
+    return updatedComplaint;
   },
 
   async deleteComplaint(id: string): Promise<boolean> {
-    const { error } = await supabase
-      .from('complaints')
-      .delete()
-      .eq('id', id);
+    if (appwriteDatabase.isConfigured()) {
+      appwriteDatabase.deleteComplaint(id).catch(() => {});
+    }
 
-    if (error) throw error;
+    const currentList = getStoredComplaints();
+    saveStoredComplaints(currentList.filter(c => c.id !== id));
     return true;
   },
 
   async addComment(complaintId: string, userId: string, userName: string, userRole: string, content: string): Promise<ComplaintComment> {
-    const { data, error } = await supabase
-      .from('comments')
-      .insert({
-        complaint_id: complaintId,
-        user_id: isValidUuid(userId) ? userId : null,
-        user_name: userName,
-        user_role: userRole,
-        content: content
-      })
-      .select()
-      .single();
+    const nowStr = new Date().toISOString();
+    const newComment: ComplaintComment = {
+      id: `comm-${Date.now()}`,
+      complaintId,
+      userId,
+      userName,
+      userRole: userRole as any,
+      content,
+      createdAt: nowStr
+    };
 
-    if (error) throw error;
-    return mapComment(data);
+    if (appwriteDatabase.isConfigured()) {
+      appwriteDatabase.createComment(complaintId, newComment).catch(e => {
+        console.warn('[Appwrite Database] comment sync notice:', e);
+      });
+    }
+
+    const existing = getStoredComments(complaintId);
+    saveStoredComments(complaintId, [...existing, newComment]);
+
+    return newComment;
   },
 
   async searchComplaints(query: string): Promise<Complaint[]> {
-    const term = `%${query.toLowerCase()}%`;
-    const { data, error } = await supabase
-      .from('complaints')
-      .select('*')
-      .or(`title.ilike.${term},description.ilike.${term},category.ilike.${term},address.ilike.${term}`);
+    const all = await this.getAllComplaints();
+    const term = query.toLowerCase().trim();
+    if (!term) return all;
 
-    if (error) throw error;
-    return (data || []).map(row => mapComplaint(row));
+    return all.filter(c =>
+      c.title.toLowerCase().includes(term) ||
+      c.description.toLowerCase().includes(term) ||
+      c.category.toLowerCase().includes(term) ||
+      c.location.address.toLowerCase().includes(term) ||
+      (c.assignedOfficerName && c.assignedOfficerName.toLowerCase().includes(term))
+    );
   },
 
   async filterComplaints(filters: ComplaintFilters): Promise<Complaint[]> {
-    let query = supabase.from('complaints').select('*');
+    const all = await this.getAllComplaints();
 
-    if (filters.priority && filters.priority !== 'all') {
-      query = query.eq('priority', filters.priority);
-    }
-    if (filters.status && filters.status !== 'all') {
-      query = query.eq('status', filters.status);
-    }
-    if (filters.category && filters.category !== 'all') {
-      query = query.eq('category', filters.category);
-    }
-    if (filters.assignedOfficerId) {
-      query = query.eq('assigned_officer_id', filters.assignedOfficerId);
-    }
-    if (filters.reporterId) {
-      if (isValidUuid(filters.reporterId)) {
-        query = query.eq('reporter_id', filters.reporterId);
-      } else if (filters.reporterName) {
-        query = query.eq('reporter_name', filters.reporterName);
-      } else {
-        query = query.is('reporter_id', null);
+    return all.filter(c => {
+      if (filters.priority && filters.priority !== 'all' && c.priority !== filters.priority) return false;
+      if (filters.status && filters.status !== 'all' && c.status !== filters.status) return false;
+      if (filters.category && filters.category !== 'all' && c.category !== filters.category) return false;
+      if (filters.assignedOfficerId && c.assignedOfficerId !== filters.assignedOfficerId) return false;
+      if (filters.reporterId && c.reporterId !== filters.reporterId) {
+        if (filters.reporterName && c.reporterName !== filters.reporterName) return false;
       }
-    }
-
-    const { data, error } = await query;
-    if (error) throw error;
-
-    let result = (data || []).map(row => mapComplaint(row));
-
-    if (filters.search) {
-      const term = filters.search.toLowerCase();
-      result = result.filter(c => 
-        c.title.toLowerCase().includes(term) ||
-        c.description.toLowerCase().includes(term) ||
-        c.category.toLowerCase().includes(term) ||
-        c.location.address.toLowerCase().includes(term) ||
-        (c.assignedOfficerName && c.assignedOfficerName.toLowerCase().includes(term))
-      );
-    }
-
-    return result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      if (filters.search) {
+        const term = filters.search.toLowerCase();
+        const matches =
+          c.title.toLowerCase().includes(term) ||
+          c.description.toLowerCase().includes(term) ||
+          c.category.toLowerCase().includes(term) ||
+          c.location.address.toLowerCase().includes(term) ||
+          (c.assignedOfficerName && c.assignedOfficerName.toLowerCase().includes(term));
+        if (!matches) return false;
+      }
+      return true;
+    }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 };

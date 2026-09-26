@@ -1,11 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Shield,
-  Zap,
   CheckCircle2,
-  Users,
   ArrowRight,
   Cpu,
   BarChart3,
@@ -38,71 +36,6 @@ const faqs = [
 ];
 
 export const LandingPage: React.FC = () => {
-  const [selectedDemoIssue, setSelectedDemoIssue] = useState<number | null>(null);
-  const [demoInput, setDemoInput] = useState('');
-  const [demoResult, setDemoResult] = useState<{
-    category: string;
-    priority: string;
-    estTime: string;
-  } | null>(null);
-  const [demoLoading, setDemoLoading] = useState(false);
-
-  const demoPresets = [
-    { text: 'Massive water pipe bursting and flooding the sidewalk near Market St.', category: 'Water & Sewer', priority: 'Critical', estTime: '12-24 Hours' },
-    { text: 'A deep pothole in the center lane of the road causing cars to swerve.', category: 'Roads & Traffic', priority: 'High', estTime: '2-3 Days' },
-    { text: 'The corner streetlight bulb is burnt out and the intersection is dark.', category: 'Public Lighting', priority: 'Medium', estTime: '5 Days' }
-  ];
-
-  const handleDemoPresetClick = (idx: number) => {
-    setSelectedDemoIssue(idx);
-    setDemoLoading(true);
-    setDemoResult(null);
-    setTimeout(() => {
-      setDemoResult({
-        category: demoPresets[idx].category,
-        priority: demoPresets[idx].priority,
-        estTime: demoPresets[idx].estTime
-      });
-      setDemoLoading(false);
-    }, 800);
-  };
-
-  const handleCustomDemo = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!demoInput.trim()) return;
-    setDemoLoading(true);
-    setDemoResult(null);
-    setSelectedDemoIssue(null);
-
-    setTimeout(() => {
-      let category = 'Other';
-      let priority = 'Medium';
-      let estTime = '6 Days';
-      
-      const term = demoInput.toLowerCase();
-      if (term.includes('water') || term.includes('leak') || term.includes('flood') || term.includes('sewer')) {
-        category = 'Water & Sewer';
-        priority = 'Critical';
-        estTime = '24 Hours';
-      } else if (term.includes('pothole') || term.includes('road') || term.includes('pavement')) {
-        category = 'Roads & Traffic';
-        priority = 'High';
-        estTime = '3 Days';
-      } else if (term.includes('trash') || term.includes('garbage') || term.includes('dumping')) {
-        category = 'Sanitation';
-        priority = 'High';
-        estTime = '2 Days';
-      } else if (term.includes('light') || term.includes('lamp') || term.includes('dark')) {
-        category = 'Public Lighting';
-        priority = 'Medium';
-        estTime = '5 Days';
-      }
-
-      setDemoResult({ category, priority, estTime });
-      setDemoLoading(false);
-    }, 900);
-  };
-
   return (
     <div className="flex-1 flex flex-col bg-slate-950 text-slate-100">
       
@@ -119,9 +52,7 @@ export const LandingPage: React.FC = () => {
           <nav className="hidden md:flex items-center gap-6">
             <a href="#how-it-works" className="text-sm text-slate-400 hover:text-white transition-colors">How It Works</a>
             <a href="#features" className="text-sm text-slate-400 hover:text-white transition-colors">Features</a>
-            <a href="#ai-demo" className="text-sm text-slate-400 hover:text-white transition-colors">AI Showcase</a>
             <a href="#faq" className="text-sm text-slate-400 hover:text-white transition-colors">FAQ</a>
-            <a href="#contact" className="text-sm text-slate-400 hover:text-white transition-colors">Contact</a>
           </nav>
 
           <div className="flex items-center gap-3">
@@ -171,12 +102,12 @@ export const LandingPage: React.FC = () => {
                 File Your First Complaint
                 <ArrowRight size={16} />
               </Link>
-              <a
-                href="#ai-demo"
+              <Link
+                to="/map"
                 className="text-sm font-semibold border border-slate-800 hover:bg-slate-900/50 hover:text-white transition-colors px-6 py-3.5 rounded-xl text-slate-300"
               >
-                Try the AI Showcase
-              </a>
+                Explore Public Map
+              </Link>
             </div>
           </motion.div>
 
@@ -264,113 +195,6 @@ export const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* AI Demo Showcase */}
-      <section id="ai-demo" className="py-20 px-6 bg-slate-950/40 border-y border-slate-900">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          <div className="flex flex-col gap-6">
-            <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-violet-500/10 border border-violet-500/30 text-violet-400 text-xxs uppercase font-bold">
-              Interactive Test
-            </div>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-white">Experience AI Verification</h2>
-            <p className="text-slate-400 text-sm leading-relaxed">
-              Click any sample issue preset below, or type your own custom description. Our mock intelligence service will classify, prioritize, and approximate municipal resolution times.
-            </p>
-
-            <div className="flex flex-col gap-3 mt-2">
-              <p className="text-xs font-semibold text-slate-400">Click a Sample Case:</p>
-              {demoPresets.map((preset, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => handleDemoPresetClick(idx)}
-                  className={`text-left text-xs p-3 rounded-xl border transition-all duration-200
-                    ${selectedDemoIssue === idx
-                      ? 'bg-violet-950/20 border-violet-500/40 text-slate-200 font-medium'
-                      : 'border-slate-800 bg-slate-900/20 hover:border-slate-700 text-slate-400'
-                    }`}
-                >
-                  "{preset.text}"
-                </button>
-              ))}
-            </div>
-
-            <form onSubmit={handleCustomDemo} className="flex gap-2 mt-4">
-              <input
-                type="text"
-                value={demoInput}
-                onChange={e => setDemoInput(e.target.value)}
-                placeholder="Try writing: 'A water leak flooding the sidewalk...'"
-                className="flex-1 bg-slate-900/60 border border-slate-800 focus:border-violet-500 focus:ring-1 focus:ring-violet-500 rounded-xl px-4 py-2 text-xs outline-none transition-colors"
-              />
-              <button
-                type="submit"
-                className="bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs px-4 py-2 rounded-xl transition-all"
-              >
-                Analyze
-              </button>
-            </form>
-          </div>
-
-          <div>
-            <Card glow={!!demoResult} glowColor="rose" hoverable={false} className="border-slate-800/80 bg-slate-900/10 p-8 h-[360px] flex flex-col justify-between">
-              <div>
-                <h3 className="font-bold text-base text-white border-b border-slate-800 pb-3 flex items-center gap-2">
-                  <Cpu size={16} className="text-violet-400" />
-                  AI Classifier Output
-                </h3>
-
-                <div className="mt-6 flex flex-col gap-4">
-                  {demoLoading ? (
-                    <div className="space-y-4 animate-pulse">
-                      <div className="h-6 bg-slate-800 rounded w-1/3" />
-                      <div className="h-4 bg-slate-800 rounded w-1/2" />
-                      <div className="h-4 bg-slate-800 rounded w-2/3" />
-                    </div>
-                  ) : demoResult ? (
-                    <>
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="text-slate-400">Classified Category:</span>
-                        <span className="font-bold text-white bg-slate-800/60 px-3 py-1 rounded-lg border border-slate-700/50">
-                          {demoResult.category}
-                        </span>
-                      </div>
-                      
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="text-slate-400">Predicted Severity:</span>
-                        <span className={`font-bold px-3 py-1 rounded-lg uppercase tracking-wider
-                          ${demoResult.priority === 'Critical' 
-                            ? 'bg-rose-500/10 text-rose-400 border border-rose-500/30' 
-                            : demoResult.priority === 'High'
-                              ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
-                              : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/30'}`}>
-                          {demoResult.priority}
-                        </span>
-                      </div>
-
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="text-slate-400">Resolution SLA Target:</span>
-                        <span className="font-bold text-slate-200 flex items-center gap-1">
-                          <Clock size={12} className="text-blue-400" />
-                          {demoResult.estTime}
-                        </span>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="text-center py-8 text-slate-500 flex flex-col items-center gap-2">
-                      <Zap size={24} className="text-slate-700 animate-bounce" />
-                      <p className="text-xs">Click a preset or submit an issue to run models.</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="text-[10px] text-slate-500 leading-normal border-t border-slate-800/80 pt-3">
-                Disclaimer: Analysis is simulated in frontend service parameters for quick loading demonstrations.
-              </div>
-            </Card>
-          </div>
-        </div>
-      </section>
-
       {/* Features */}
       <section id="features" className="py-20 px-6 max-w-7xl mx-auto w-full">
         <div className="text-center max-w-xl mx-auto mb-16">
@@ -378,13 +202,13 @@ export const LandingPage: React.FC = () => {
           <p className="text-xs text-slate-400 mt-2">Engineered to streamline civil issue ticket resolving workflows</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card hoverable={true} className="flex flex-col gap-2">
             <h4 className="font-semibold text-base text-white flex items-center gap-2">
               <Cpu size={16} className="text-blue-400" /> Image Vision Scanner
             </h4>
             <p className="text-xs text-slate-400 leading-relaxed mt-1">
-              Supports camera capture or folder uploads. Automatically detects category and priority from graphics context.
+              Supports camera capture or file uploads. Automatically detects category and priority from graphics context.
             </p>
           </Card>
           <Card hoverable={true} className="flex flex-col gap-2">
@@ -397,18 +221,10 @@ export const LandingPage: React.FC = () => {
           </Card>
           <Card hoverable={true} className="flex flex-col gap-2">
             <h4 className="font-semibold text-base text-white flex items-center gap-2">
-              <MapPin size={16} className="text-blue-400" /> Colored Map Overlays
-            </h4>
-            <p className="text-xs text-slate-400 leading-relaxed mt-1">
-              Displays colored markers reflecting priority levels (Critical, High, Medium, Low) and lists popup details dynamically.
-            </p>
-          </Card>
-          <Card hoverable={true} className="flex flex-col gap-2">
-            <h4 className="font-semibold text-base text-white flex items-center gap-2">
               <Clock size={16} className="text-blue-400" /> Status Step Timelines
             </h4>
             <p className="text-xs text-slate-400 leading-relaxed mt-1">
-              Framer Motion animated tracks of submission, verification, officer allocation, repair status, and final seal.
+              Animated tracking of submission, verification, officer allocation, repair status, and final resolution.
             </p>
           </Card>
           <Card hoverable={true} className="flex flex-col gap-2">
@@ -419,19 +235,11 @@ export const LandingPage: React.FC = () => {
               Tracks department response curves, monthly aggregate stats, and satisfaction ratings via vector statistics charts.
             </p>
           </Card>
-          <Card hoverable={true} className="flex flex-col gap-2">
-            <h4 className="font-semibold text-base text-white flex items-center gap-2">
-              <Users size={16} className="text-blue-400" /> Department Allocation
-            </h4>
-            <p className="text-xs text-slate-400 leading-relaxed mt-1">
-              Automatically assigns issues to corresponding municipal departments. Features officer routing and update streams.
-            </p>
-          </Card>
         </div>
       </section>
 
       {/* FAQ Section */}
-      <section id="faq" className="py-20 px-6 bg-slate-950/40 border-y border-slate-900">
+      <section id="faq" className="py-20 px-6 bg-slate-950/40 border-t border-slate-900">
         <div className="max-w-4xl mx-auto w-full">
           <div className="text-center mb-12">
             <h2 className="text-2xl sm:text-3xl font-extrabold text-white">Frequently Asked Questions</h2>
@@ -447,38 +255,6 @@ export const LandingPage: React.FC = () => {
             ))}
           </div>
         </div>
-      </section>
-
-      {/* Contact Section */}
-      <section id="contact" className="py-20 px-6 max-w-xl mx-auto w-full">
-        <div className="text-center mb-10">
-          <h2 className="text-2xl font-extrabold text-white">Get in Touch</h2>
-          <p className="text-xs text-slate-400 mt-2">Municipal operational support & department integrations</p>
-        </div>
-
-        <form onSubmit={e => { e.preventDefault(); alert('Message sent successfully!'); }} className="flex flex-col gap-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1">
-              <label className="text-[10px] uppercase font-bold text-slate-400">Full Name</label>
-              <input required type="text" className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500 transition-colors" />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-[10px] uppercase font-bold text-slate-400">Email Address</label>
-              <input required type="email" className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500 transition-colors" />
-            </div>
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-[10px] uppercase font-bold text-slate-400">Subject</label>
-            <input required type="text" className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500 transition-colors" />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-[10px] uppercase font-bold text-slate-400">Message Content</label>
-            <textarea required rows={4} className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500 transition-colors resize-none" />
-          </div>
-          <button type="submit" className="bg-blue-600 hover:bg-blue-500 hover:shadow-glow-blue text-white font-bold text-xs py-3 rounded-xl transition-all mt-2">
-            Send Message
-          </button>
-        </form>
       </section>
 
       {/* Footer */}

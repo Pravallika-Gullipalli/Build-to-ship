@@ -62,9 +62,13 @@ export const MapViewPage: React.FC = () => {
     return '#eab308'; // Medium
   };
 
+  const mapCenter: [number, number] = complaints && complaints.length > 0
+    ? [complaints[0].location.lat, complaints[0].location.lng]
+    : [16.4793, 80.6619];
+
   return (
     <div className="flex flex-col gap-4 h-[calc(100vh-140px)]">
-      
+
       {/* Top Filter Bar */}
       <Card hoverable={false} className="border-slate-800/60 bg-slate-900/40 p-4 shrink-0">
         <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
@@ -95,7 +99,7 @@ export const MapViewPage: React.FC = () => {
               <SlidersHorizontal size={12} />
               Filter Severity:
             </div>
-            
+
             <select
               value={priorityFilter}
               onChange={e => setPriorityFilter(e.target.value as ComplaintPriority | 'all')}
@@ -119,7 +123,8 @@ export const MapViewPage: React.FC = () => {
           </div>
         ) : (
           <MapContainer
-            center={[37.7749, -122.4194]}
+            key={`${mapCenter[0]}-${mapCenter[1]}`}
+            center={mapCenter}
             zoom={13}
             className="w-full h-full"
           >

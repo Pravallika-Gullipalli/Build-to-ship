@@ -1,0 +1,53 @@
+import emailjs from '@emailjs/browser';
+
+const SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || '';
+const TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || '';
+const PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || '';
+
+export const emailJsService = {
+  isConfigured(): boolean {
+    return Boolean(SERVICE_ID && TEMPLATE_ID && PUBLIC_KEY);
+  },
+
+  async sendVerificationCode(toEmail: string, code: string, recipientName = ''): Promise<{ success: boolean; message: string }> {
+    if (!this.isConfigured()) {
+      console.warn('[EmailJS] Configuration missing (SERVICE_ID, TEMPLATE_ID, or PUBLIC_KEY not set in .env)');
+      return { success: false, message: 'EmailJS credentials missing in .env' };
+    }
+
+    const cleanEmail = toEmail.trim().toLowerCase();
+    const finalName = recipientName || cleanEmail.split('@')[0];
+
+    const templateParams = {
+      to_email: cleanEmail,
+      email: cleanEmail,
+      recipient_email: cleanEmail,
+      to_name: finalName,
+      user_name: finalName,
+      name: finalName,
+      passcode: code,
+      otp_code: code,
+      code: code,
+      message: `Your 6-digit verification code is: ${code}`,
+      app_name: 'AI CivicFix',
+      time: new Date().toLocaleTimeString()
+    };
+
+    try {
+      const response = await emailjs.send(
+        SERVICE_ID,
+        TEMPLATE_ID,
+        templateParams,
+        PUBLIC_KEY
+      );
+
+      console.log(`[EmailJS] Successfully dispatched confirmation code to ${cleanEmail}:`, response.status, response.text);
+      return { success: true, message: 'Verification email sent successfully.' };
+    } catch (error: any) {
+      console.error('[EmailJS] Failed to send email:', error);
+      return { success: false, message: error?.text || error?.message || 'Failed to dispatch email via EmailJS.' };
+    }
+  }
+};
+
+export default emailJsService;

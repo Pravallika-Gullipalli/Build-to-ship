@@ -9,34 +9,36 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('Supabase credentials missing. App will operate in local fallback mock mode.');
   
   // Safe mock client proxy to prevent runtime crashes if env vars are unset
+  const createChainableQuery = () => {
+    const handler: ProxyHandler<any> = {
+      get(_target, prop) {
+        if (prop === 'then') {
+          return (resolve: any) => resolve({ data: null, error: null });
+        }
+        return (..._args: any[]) => new Proxy(() => {}, handler);
+      }
+    };
+    return new Proxy(() => {}, handler);
+  };
+
   client = new Proxy({}, {
     get(_target, prop) {
       if (prop === 'auth') {
         return {
-          signUp: () => Promise.resolve({ data: { user: null, session: null }, error: new Error('Supabase is not configured') }),
-          signInWithPassword: () => Promise.resolve({ data: { user: null, session: null }, error: new Error('Supabase is not configured') }),
+          signUp: () => Promise.resolve({ data: { user: null, session: null }, error: null }),
+          signInWithPassword: () => Promise.resolve({ data: { user: null, session: null }, error: null }),
           signOut: () => Promise.resolve({ error: null }),
           updateUser: () => Promise.resolve({ data: { user: null }, error: null }),
           verifyOtp: () => Promise.resolve({ data: { user: null }, error: null }),
+          getUser: () => Promise.resolve({ data: { user: null }, error: null }),
+          getSession: () => Promise.resolve({ data: { session: null }, error: null }),
           onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } })
         };
       }
-      
-      // Fallback for query builders: supabase.from().select()
-      return () => ({
-        select: () => ({
-          eq: () => ({
-            maybeSingle: () => Promise.resolve({ data: null, error: null }),
-            single: () => Promise.resolve({ data: null, error: null }),
-            order: () => Promise.resolve({ data: [], error: null })
-          }),
-          order: () => Promise.resolve({ data: [], error: null })
-        }),
-        insert: () => Promise.resolve({ data: null, error: null }),
-        update: () => ({
-          eq: () => Promise.resolve({ data: null, error: null })
-        })
-      });
+      if (prop === 'from') {
+        return () => createChainableQuery();
+      }
+      return createChainableQuery();
     }
   });
 } else {

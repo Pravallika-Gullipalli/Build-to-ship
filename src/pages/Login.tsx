@@ -22,11 +22,12 @@ export const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [portalRole, setPortalRole] = useState<'citizen' | 'officer'>('citizen');
-  const [couponCode, setCouponCode] = useState('');
+  const [couponCode, setCouponCode] = useState('OFFICER123');
 
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors }
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -36,22 +37,23 @@ export const Login: React.FC = () => {
     }
   });
 
-  const onSubmit = async (values: LoginFormValues) => {
-    if (portalRole === 'officer') {
-      if (!couponCode) {
-        showToast('warning', 'Coupon Code Required', 'Please enter your officer coupon code.');
-        return;
-      }
-      if (couponCode.trim().toUpperCase() !== 'OFFICER123' && !couponCode.trim().toUpperCase().startsWith('OFFICER')) {
-        showToast('error', 'Authentication Failed', 'Invalid Officer Coupon Code.');
-        return;
-      }
+  const handlePortalSwitch = (role: 'citizen' | 'officer') => {
+    setPortalRole(role);
+    if (role === 'officer') {
+      setValue('email', 'officer@civicfix.gov');
+      setValue('password', 'password123');
+      setCouponCode('OFFICER123');
+    } else {
+      setValue('email', 'citizen@civicfix.gov');
+      setValue('password', 'password123');
     }
+  };
 
+  const onSubmit = async (values: LoginFormValues) => {
     setIsSubmitting(true);
     try {
       const loggedUser = await login({
-        email: values.email,
+        email: values.email.trim(),
         password: values.password,
         role: portalRole
       });
@@ -100,7 +102,7 @@ export const Login: React.FC = () => {
           <div className="grid grid-cols-2 gap-2 mb-6">
             <button
               type="button"
-              onClick={() => setPortalRole('citizen')}
+              onClick={() => handlePortalSwitch('citizen')}
               className={`py-2 rounded-lg border text-xxs font-bold uppercase transition-all duration-200
                 ${portalRole === 'citizen'
                   ? 'bg-blue-600 border-blue-500 text-white shadow-glow-blue'
@@ -111,7 +113,7 @@ export const Login: React.FC = () => {
             </button>
             <button
               type="button"
-              onClick={() => setPortalRole('officer')}
+              onClick={() => handlePortalSwitch('officer')}
               className={`py-2 rounded-lg border text-xxs font-bold uppercase transition-all duration-200
                 ${portalRole === 'officer'
                   ? 'bg-blue-600 border-blue-500 text-white shadow-glow-blue'

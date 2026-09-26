@@ -62,13 +62,25 @@ export const MapComponent: React.FC<MapComponentProps> = ({
     mapRef.current = map;
     markersGroupRef.current = L.layerGroup().addTo(map);
 
+    // Ensure map tiles recalculate container dimensions properly
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 150);
+
     if (interactive && onMapClick) {
       map.on('click', (e: L.LeafletMouseEvent) => {
         onMapClick(e.latlng.lat, e.latlng.lng);
       });
     }
 
+    const handleResize = () => {
+      map.invalidateSize();
+    };
+    window.addEventListener('resize', handleResize);
+
     return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', handleResize);
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
@@ -81,6 +93,9 @@ export const MapComponent: React.FC<MapComponentProps> = ({
   useEffect(() => {
     if (mapRef.current) {
       mapRef.current.setView(center, zoom);
+      setTimeout(() => {
+        mapRef.current?.invalidateSize();
+      }, 100);
     }
   }, [center, zoom]);
 

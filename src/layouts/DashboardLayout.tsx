@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNotification } from '../contexts/NotificationContext';
+import { getAvatarUrl } from '../utils/avatar';
 import type { UserRole } from '../types/user';
 import {
   LayoutDashboard,
@@ -224,7 +225,7 @@ export const DashboardLayout: React.FC = () => {
                 className="flex items-center gap-2 p-1.5 pr-3 rounded-xl border border-slate-200 dark:border-slate-800/60 hover:bg-slate-200/50 dark:hover:bg-slate-900/60 transition-colors"
               >
                 <img
-                  src={user.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120'}
+                  src={getAvatarUrl(user)}
                   alt={user.name}
                   className="w-8 h-8 rounded-lg object-cover"
                 />
